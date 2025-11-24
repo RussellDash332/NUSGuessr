@@ -254,9 +254,13 @@ export function GameLayout() {
           <div className="my-4 space-y-2">
             <div className="max-h-40 overflow-y-auto pr-2 space-y-2 text-sm">
               {roundScores.map((r, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="truncate text-muted-foreground">{index + 1}. {r.locationName}</span>
-                  <span className="font-medium text-primary">{r.score.toLocaleString()} pts</span>
+                <div key={index} className="flex justify-between items-start gap-4">
+                  <span className="text-muted-foreground">
+                    {index + 1}. {r.locationName}
+                  </span>
+                  <span className="shrink-0 font-medium text-primary whitespace-nowrap">
+                    {r.score.toLocaleString()} pts
+                  </span>
                 </div>
               ))}
             </div>
@@ -266,7 +270,7 @@ export function GameLayout() {
               <span className="text-primary">{totalScore.toLocaleString()}</span>
             </div>
           </div>
-          <AlertDialogFooter className="sm:flex-row flex-col-reverse gap-2">
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={handleCopyResults} className="w-full sm:w-auto">
                 <ClipboardCopy className="mr-2 h-4 w-4" />
                 Copy Results
