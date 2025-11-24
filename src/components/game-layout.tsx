@@ -224,7 +224,7 @@ export function GameLayout() {
             <AlertDialogAction onClick={resetGame} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
               Play Again
             </AlertDialogAction>
-             <p className="text-xs text-muted-foreground">© 2025 Russell Saerang</p>
+             <p className="text-xs text-muted-foreground">RussellDash332 © 2025</p>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
