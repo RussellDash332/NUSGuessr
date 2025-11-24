@@ -78,7 +78,9 @@ export function GameLayout() {
 
   useEffect(() => {
     // This ensures random location selection only happens on the client after hydration
-    startNewRound(true);
+    if (!currentLocation) {
+        startNewRound(true);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -120,7 +122,7 @@ export function GameLayout() {
     );
   }
   
-  const mapCenter: LatLngExpression = [1.2966, 103.7764]; // Center of NUS
+  const mapCenter: LatLngExpression = [1.2991, 103.7764]; // Center of NUS
   const actualPosition: LatLng | null = currentLocation ? { lat: currentLocation.coordinates.lat, lng: currentLocation.coordinates.lng } : null;
   const totalRounds = locations.length;
 
@@ -138,19 +140,20 @@ export function GameLayout() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative aspect-[3/2] w-full">
+              <div 
+                className="relative aspect-[3/2] w-full"
+                onContextMenu={(e) => e.preventDefault()}
+                onDragStart={(e) => e.preventDefault()}
+              >
                 <Image
                   src={currentLocation.image.imageUrl}
                   alt={currentLocation.image.description}
                   fill
                   priority
-                  className="object-cover rounded-lg"
+                  className="object-cover rounded-lg pointer-events-none"
                   data-ai-hint={currentLocation.image.imageHint}
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Note: Images are representative placeholders from a curated repository and may not be exact depictions of the locations.
-              </p>
             </CardContent>
           </Card>
 
