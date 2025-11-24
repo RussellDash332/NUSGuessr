@@ -24,11 +24,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MapPin, Trophy } from "lucide-react";
+import { MapPin, Trophy, ClipboardCopy } from "lucide-react";
 import type { LatLng, LatLngExpression, LeafletMouseEvent } from "leaflet";
 import { useRouter } from 'next/navigation';
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 type GameState = "guessing" | "revealed";
+type RoundScore = {
+  locationName: string;
+  score: number;
+};
 
 const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => mod.MapWrapper), {
   ssr: false,
@@ -46,8 +52,10 @@ export function GameLayout() {
   const [totalScore, setTotalScore] = useState<number>(0);
   const [round, setRound] = useState<number>(1);
   const [usedLocations, setUsedLocations] = useState<string[]>([]);
+  const [roundScores, setRoundScores] = useState<RoundScore[]>([]);
   const [isGameOver, setIsGameOver] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
   const startNewRound = useCallback((isReset = false) => {
     let newUsedLocations = isReset ? [] : usedLocations;
@@ -72,6 +80,7 @@ export function GameLayout() {
     setTotalScore(0);
     setRound(1);
     setUsedLocations([]);
+    setRoundScores([]);
     setIsGameOver(false);
     startNewRound(true);
   }, [startNewRound]);
@@ -102,6 +111,7 @@ export function GameLayout() {
     setDistance(dist);
     setScore(newScore);
     setTotalScore(prev => prev + newScore);
+    setRoundScores(prev => [...prev, { locationName: currentLocation.name, score: newScore }]);
     setGameState("revealed");
   };
 
@@ -112,6 +122,30 @@ export function GameLayout() {
     } else {
       setIsGameOver(true);
     }
+  };
+
+  const handleCopyResults = () => {
+    const title = `NUSGuessr - Final Score: ${totalScore.toLocaleString()}`;
+    const summary = roundScores.map(
+      (r, index) => `Round ${index + 1}: ${r.locationName} - ${r.score.toLocaleString()} pts`
+    ).join('\n');
+    const url = 'https://russelldash332.github.io/NUSGuessr';
+    
+    const textToCopy = `${title}\n\n${summary}\n\nPlay here: ${url}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      toast({
+        title: "Copied to clipboard!",
+        description: "Your game results have been copied.",
+      });
+    }).catch(err => {
+      console.error('Failed to copy results: ', err);
+      toast({
+        variant: 'destructive',
+        title: "Oops!",
+        description: "Could not copy results to clipboard.",
+      });
+    });
   };
 
   if (!currentLocation) {
@@ -214,17 +248,32 @@ export function GameLayout() {
             </div>
             <AlertDialogTitle className="text-center text-3xl font-bold">Game Over!</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-lg">
-              Here's your final score.
+              Here's your final score summary.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="text-6xl font-bold text-primary my-4 text-center">
-            {totalScore.toLocaleString()}
+          <div className="my-4 space-y-2">
+            <div className="max-h-40 overflow-y-auto pr-2 space-y-2 text-sm">
+              {roundScores.map((r, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <span className="truncate text-muted-foreground">{index + 1}. {r.locationName}</span>
+                  <span className="font-medium text-primary">{r.score.toLocaleString()} pts</span>
+                </div>
+              ))}
+            </div>
+            <Separator />
+            <div className="flex justify-between items-center text-xl font-bold pt-2">
+              <span>Total Score:</span>
+              <span className="text-primary">{totalScore.toLocaleString()}</span>
+            </div>
           </div>
-          <AlertDialogFooter className="flex-col gap-2">
-            <AlertDialogAction onClick={resetGame} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+          <AlertDialogFooter className="sm:flex-row flex-col-reverse gap-2">
+            <Button variant="outline" onClick={handleCopyResults} className="w-full sm:w-auto">
+                <ClipboardCopy className="mr-2 h-4 w-4" />
+                Copy Results
+            </Button>
+            <AlertDialogAction onClick={resetGame} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
               Play Again
             </AlertDialogAction>
-             <p className="text-xs text-muted-foreground">RussellDash332 © 2025</p>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

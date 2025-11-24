@@ -1,4 +1,4 @@
-# NUSGuessr
+# [NUSGuessr](https://russelldash332.github.io/NUSGuessr)
 Letting Firebase Studio cook something simple?
 
 ## Getting Started
