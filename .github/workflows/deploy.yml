@@ -33,6 +33,10 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+      - name: Create Game Data File
+        run: |
+          mkdir -p src/lib
+          echo '${{ secrets.GAME_DATA_JSON }}' > src/lib/game-data.json
       - name: Install dependencies
         run: npm install
       - name: Build with Next.js

@@ -32,7 +32,15 @@ To complete the setup, follow these steps:
 1.  **Update `next.config.ts`**:
     Open the `next.config.ts` file and replace `<repository-name>` in the `basePath` property with the name of your GitHub repository. For example, if your repository URL is `https://github.com/your-username/my-awesome-app`, you would change it to `basePath: '/my-awesome-app'`.
 
-2.  **Configure GitHub Pages**:
+2.  **Create a Repository Secret**:
+    - Go to your repository's settings on GitHub.
+    - In the sidebar, navigate to "Secrets and variables" > "Actions".
+    - Click the "New repository secret" button.
+    - For the "Name", enter `GAME_DATA_JSON`.
+    - For the "Value", copy and paste the entire content of your local `src/lib/game-data.json` file.
+    - Click "Add secret".
+
+3.  **Configure GitHub Pages**:
     - Go to your repository's settings on GitHub.
     - Navigate to the "Pages" section in the sidebar.
     - Under "Build and deployment", select **GitHub Actions** as the "Source".
