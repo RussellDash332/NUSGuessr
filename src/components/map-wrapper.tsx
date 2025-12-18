@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef } from "react";
@@ -12,14 +13,14 @@ L.Icon.Default.mergeOptions({
 });
 
 const guessIcon = new L.Icon({
-  iconUrl: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32"><path fill="hsl(var(--primary))" stroke="hsl(var(--primary-foreground))" stroke-width="1" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>`,
+  iconUrl: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32"><path fill="%233B82F6" stroke="%231E3A8A" stroke-width="1" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>`,
   iconSize: [32, 32],
   iconAnchor: [16, 32],
   popupAnchor: [0, -32],
 });
 
 const actualIcon = new L.Icon({
-  iconUrl: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32"><path fill="hsl(var(--destructive))" stroke="%23fff" stroke-width="1" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>`,
+  iconUrl: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32"><path fill="%23FF4136" stroke="%23000000" stroke-width="1" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>`,
   iconSize: [32, 32],
   iconAnchor: [16, 32],
   popupAnchor: [0, -32],
@@ -132,11 +133,11 @@ export function MapWrapper({
         actualMarkerRef.current = L.marker(actualPosition, { icon: actualIcon }).addTo(map);
       }
       
-      // Add polyline
+      // Add polyline and fit bounds
       if (guessPosition && !polylineRef.current) {
         const latlngs = [guessPosition, actualPosition];
-        polylineRef.current = L.polyline(latlngs, { color: 'hsl(var(--destructive))', weight: 3, opacity: 0.9 }).addTo(map);
-        map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50] });
+        polylineRef.current = L.polyline(latlngs, { color: 'black', weight: 3, opacity: 0.9 }).addTo(map);
+        map.fitBounds(L.latLngBounds(latlngs), { padding: [10, 10] });
       }
     } else {
       // Clean up revealed items
