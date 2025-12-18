@@ -26,10 +26,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MapPin, Trophy, ClipboardCopy, Eye, ArrowRight, BookX, ZoomIn, X, Minus, Plus, Clock } from "lucide-react";
 import type { LatLng, LatLngExpression, LeafletMouseEvent } from "leaflet";
-import { useRouter } from 'next/navigation';
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type GameState = "guessing" | "revealed";
 type RoundScore = {
@@ -69,10 +69,9 @@ export function GameLayout() {
 
   const [startTime, setStartTime] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<number | null>(null);
 
 
-  const router = useRouter();
   const { toast } = useToast();
   
   const totalRounds = locations.length;
@@ -91,9 +90,10 @@ export function GameLayout() {
   useEffect(() => {
     if (gameState === 'guessing' && startTime > 0) {
       if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => {
+      const id = window.setInterval(() => {
         setElapsedTime(Date.now() - startTime);
       }, 100);
+      timerRef.current = id;
     } else if (gameState === 'revealed' && timerRef.current) {
       clearInterval(timerRef.current);
     }
@@ -256,42 +256,24 @@ export function GameLayout() {
     if (!imageRef.current || !zoomContainerRef.current) return { x, y };
 
     const containerRect = zoomContainerRef.current.getBoundingClientRect();
-    
-    // The image's natural dimensions
-    const naturalWidth = 1920;
-    const naturalHeight = 1080;
-    
-    // Calculate the rendered dimensions of the image inside the container
-    const containerAspectRatio = containerRect.width / containerRect.height;
-    const imageAspectRatio = naturalWidth / naturalHeight;
+    const imageWidth = imageRef.current.offsetWidth * currentZoom;
+    const imageHeight = imageRef.current.offsetHeight * currentZoom;
 
-    let renderedWidth, renderedHeight;
-    if (containerAspectRatio > imageAspectRatio) {
-      renderedHeight = containerRect.height;
-      renderedWidth = renderedHeight * imageAspectRatio;
-    } else {
-      renderedWidth = containerRect.width;
-      renderedHeight = renderedWidth / imageAspectRatio;
-    }
-    
-    const scaledWidth = renderedWidth * currentZoom;
-    const scaledHeight = renderedHeight * currentZoom;
-    
-    const maxPanX = Math.max(0, (scaledWidth - containerRect.width) / 2);
-    const maxPanY = Math.max(0, (scaledHeight - containerRect.height) / 2);
+    const maxPanX = Math.max(0, (imageWidth - containerRect.width) / 2);
+    const maxPanY = Math.max(0, (imageHeight - containerRect.height) / 2);
 
     return {
-        x: Math.max(-maxPanX, Math.min(maxPanX, x)),
-        y: Math.max(-maxPanY, Math.min(maxPanY, y)),
+      x: Math.max(-maxPanX, Math.min(maxPanX, x)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, y)),
     };
   }, []);
 
-  const handlePanStart = (clientX: number, clientY: number, currentTarget: EventTarget | null) => {
+  const handlePanStart = (clientX: number, clientY: number) => {
     if (zoomLevel > 1) {
       isPanning.current = true;
       lastPanPosition.current = { x: clientX, y: clientY };
-      if (currentTarget instanceof HTMLElement) {
-        currentTarget.classList.add('cursor-grabbing');
+      if (zoomContainerRef.current) {
+        zoomContainerRef.current.classList.add('cursor-grabbing');
       }
     }
   };
@@ -310,11 +292,11 @@ export function GameLayout() {
     }
   };
   
-  const handlePanEnd = (currentTarget: EventTarget | null) => {
+  const handlePanEnd = () => {
     if (isPanning.current) {
         isPanning.current = false;
-        if (currentTarget instanceof HTMLElement) {
-          currentTarget.classList.remove('cursor-grabbing');
+        if (zoomContainerRef.current) {
+            zoomContainerRef.current.classList.remove('cursor-grabbing');
         }
     }
   };
@@ -464,7 +446,7 @@ export function GameLayout() {
       
       {isImageZoomed && (
         <div
-          className="absolute inset-0 z-[1001] bg-black/80 flex items-center justify-center overflow-hidden"
+          className="absolute inset-0 z-[1001] bg-black/80 flex flex-col items-center justify-center overflow-hidden"
           onClick={(e) => e.target === e.currentTarget && closeZoomView()}
         >
           <div
@@ -473,13 +455,13 @@ export function GameLayout() {
               "relative flex items-center justify-center w-full h-full p-4",
               zoomLevel > 1 ? 'cursor-grab' : 'cursor-default'
             )}
-            onMouseDown={(e) => handlePanStart(e.clientX, e.clientY, e.currentTarget)}
+            onMouseDown={(e) => handlePanStart(e.clientX, e.clientY)}
             onMouseMove={(e) => handlePanMove(e.clientX, e.clientY)}
-            onMouseUp={(e) => handlePanEnd(e.currentTarget)}
-            onMouseLeave={(e) => handlePanEnd(e.currentTarget)}
-            onTouchStart={(e) => handlePanStart(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget)}
+            onMouseUp={handlePanEnd}
+            onMouseLeave={handlePanEnd}
+            onTouchStart={(e) => handlePanStart(e.touches[0].clientX, e.touches[0].clientY)}
             onTouchMove={(e) => handlePanMove(e.touches[0].clientX, e.touches[0].clientY)}
-            onTouchEnd={(e) => handlePanEnd(e.currentTarget)}
+            onTouchEnd={handlePanEnd}
           >
             <div
               ref={imageRef}
@@ -500,7 +482,7 @@ export function GameLayout() {
             variant="ghost"
             size="icon"
             onClick={closeZoomView}
-            className="absolute top-4 right-4 z-[1002] text-white bg-black/50 hover:bg-black/75 hover:text-white"
+            className="absolute top-4 left-4 z-[1002] text-white bg-black/50 hover:bg-black/75 hover:text-white"
           >
             <X className="h-6 w-6" />
           </Button>
@@ -541,19 +523,24 @@ export function GameLayout() {
             <p className="text-4xl sm:text-5xl font-bold tracking-tight">{totalScore.toLocaleString()}</p>
             <p className="text-muted-foreground mt-1">Total Score</p>
           </div>
-          <div>
+          <div className="text-sm">
             <h3 className="font-semibold mb-2">Round Summary:</h3>
-            <div className="space-y-2 text-sm">
-            {roundScores.map((r, i) => (
-                <div key={i} className="flex justify-between items-center bg-muted/50 p-2 rounded-md">
-                    <span className="truncate pr-2">{i+1}. {r.locationName}</span>
-                    <div className="flex items-center gap-x-2">
-                      <span className="text-muted-foreground text-xs">({(r.time / 1000).toFixed(1)}s)</span>
-                      <span className="font-medium">{r.score.toLocaleString()} pts</span>
-                    </div>
-                </div>
-            ))}
-            </div>
+            <ScrollArea className="h-40">
+              <div className="flex justify-between font-medium text-muted-foreground px-2 py-1 border-b">
+                  <span className="flex-1 pr-2">Location</span>
+                  <span className="text-center">Time</span>
+                  <span className="text-right min-w-[80px]">Score</span>
+              </div>
+              <div className="space-y-1 mt-1">
+              {roundScores.map((r, i) => (
+                  <div key={i} className="flex justify-between items-start bg-muted/30 p-2 rounded-md">
+                      <span className="flex-1 pr-2">{i+1}. {r.locationName}</span>
+                      <span className="text-center text-muted-foreground">{`${((r.time || 0) / 1000).toFixed(1)}s`}</span>
+                      <span className="text-right font-medium min-w-[80px]">{r.score.toLocaleString()} pts</span>
+                  </div>
+              ))}
+              </div>
+            </ScrollArea>
           </div>
           <AlertDialogFooter>
               <Button onClick={handleCopyResults} variant="outline" className="w-full sm:w-auto">
