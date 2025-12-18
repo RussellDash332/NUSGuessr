@@ -420,27 +420,31 @@ export function GameLayout() {
       
       {isImageZoomed && (
         <div
-          ref={zoomContainerRef}
-          className={cn(
-            "absolute inset-0 z-[1001] bg-black/80 flex justify-center overflow-y-auto",
-            zoomLevel > 1 ? 'cursor-grab' : 'cursor-default'
-          )}
+          className="absolute inset-0 z-[1001] bg-black/80"
           onClick={(e) => e.target === e.currentTarget && closeZoomView()}
-          onMouseDown={onMouseDown}
-          onMouseUp={onMouseUp}
-          onMouseMove={onMouseMove}
-          onMouseLeave={onMouseLeave}
         >
-          <div className="flex items-center justify-center w-full h-full p-4">
-            <div style={{ transform: `scale(${zoomLevel}) translate(${pan.x}px, ${pan.y}px)` }}>
-              <Image
-                ref={imageRef}
-                src={obfuscatedImageUrl!}
-                alt="Zoomed location"
-                width={1920}
-                height={1080}
-                className="w-full h-auto max-w-[90vw] max-h-[80vh] object-contain pointer-events-none"
-              />
+          <div
+            ref={zoomContainerRef}
+            className={cn(
+              "absolute inset-0 flex items-center justify-center overflow-auto",
+              zoomLevel > 1 ? 'cursor-grab' : 'cursor-default'
+            )}
+            onMouseDown={onMouseDown}
+            onMouseUp={onMouseUp}
+            onMouseMove={onMouseMove}
+            onMouseLeave={onMouseLeave}
+          >
+            <div className="flex items-center justify-center w-full h-full p-4">
+              <div style={{ transform: `scale(${zoomLevel}) translate(${pan.x}px, ${pan.y}px)` }}>
+                <Image
+                  ref={imageRef}
+                  src={obfuscatedImageUrl!}
+                  alt="Zoomed location"
+                  width={1920}
+                  height={1080}
+                  className="w-full h-auto max-w-[90vw] max-h-[80vh] object-contain pointer-events-none"
+                />
+              </div>
             </div>
           </div>
           
