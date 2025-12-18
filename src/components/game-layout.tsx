@@ -229,32 +229,14 @@ export function GameLayout() {
     const container = zoomContainerRef.current;
     const imageEl = imageRef.current?.querySelector('img');
     if (!container || !imageEl) return { x, y };
-  
+
     const containerRect = container.getBoundingClientRect();
-  
-    const imageAspectRatio = imageEl.naturalWidth / imageEl.naturalHeight;
-    const containerAspectRatio = containerRect.width / containerRect.height;
-  
-    let renderedImageWidth: number;
-    let renderedImageHeight: number;
-  
-    if (imageAspectRatio > containerAspectRatio) {
-      renderedImageWidth = containerRect.width;
-      renderedImageHeight = renderedImageWidth / imageAspectRatio;
-    } else {
-      renderedImageHeight = containerRect.height;
-      renderedImageWidth = renderedImageHeight * imageAspectRatio;
-    }
-  
-    const scaledImageWidth = renderedImageWidth * currentZoom;
-    const scaledImageHeight = renderedImageHeight * currentZoom;
-  
-    const overflowX = Math.max(0, (scaledImageWidth - containerRect.width) / 2);
-    const overflowY = Math.max(0, (scaledImageHeight - containerRect.height) / 2);
-    
-    const maxPanX = overflowX;
-    const maxPanY = overflowY;
-  
+    const scaledWidth = imageEl.clientWidth * currentZoom;
+    const scaledHeight = imageEl.clientHeight * currentZoom;
+
+    const maxPanX = Math.max(0, (scaledWidth - containerRect.width) / 2);
+    const maxPanY = Math.max(0, (scaledHeight - containerRect.height) / 2);
+
     return {
       x: Math.max(-maxPanX, Math.min(maxPanX, x)),
       y: Math.max(-maxPanY, Math.min(maxPanY, y)),
@@ -277,8 +259,6 @@ export function GameLayout() {
       const dy = clientY - lastPanPosition.current.y;
       
       setPan(prev => {
-        // The pan values are divided by zoomLevel because the transform is `scale(zoom) translate(pan)`.
-        // The translation happens in the scaled coordinate system.
         const newPan = { x: prev.x + dx, y: prev.y + dy };
         return newPan;
       });
@@ -388,7 +368,7 @@ export function GameLayout() {
   return (
     <div className="h-full w-full relative">
        <div className={cn(
-        "h-full w-full grid md:grid-cols-2 gap-8 p-4 md:p-8 max-w-7xl mx-auto",
+        "h-full w-full grid md:grid-cols-2 gap-4 md:gap-8 p-4 md:p-8 max-w-7xl mx-auto",
         isImageZoomed ? 'overflow-hidden' : 'overflow-y-auto'
       )}>
         <div className="flex flex-col gap-4 min-h-[450px]">
@@ -431,11 +411,11 @@ export function GameLayout() {
       
       {isImageZoomed && (
         <div
-          ref={zoomContainerRef}
           className="absolute inset-0 z-[1001] bg-black/80 flex items-center justify-center overflow-hidden"
           onClick={(e) => e.target === e.currentTarget && closeZoomView()}
         >
           <div
+            ref={zoomContainerRef}
             className={cn(
               "relative flex items-center justify-center w-full h-full p-4",
               zoomLevel > 1 ? 'cursor-grab' : 'cursor-default'
