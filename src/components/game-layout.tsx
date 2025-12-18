@@ -45,6 +45,71 @@ const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => 
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
+interface ImageCardProps {
+  obfuscatedImageUrl: string;
+  openZoomView: () => void;
+  setShowImageInResults?: (show: boolean) => void;
+  gameState: GameState;
+  round: number;
+  totalRounds: number;
+  totalScore: number;
+}
+
+const ImageCard = React.memo(function ImageCard({
+  obfuscatedImageUrl,
+  openZoomView,
+  setShowImageInResults,
+  gameState,
+  round,
+  totalRounds,
+  totalScore,
+}: ImageCardProps) {
+  return (
+    <Card className="flex flex-col h-full">
+      <CardHeader>
+        <CardTitle className="font-headline text-2xl">
+          Where is this?
+        </CardTitle>
+        {gameState === 'guessing' && (
+           <CardDescription>
+              Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
+           </CardDescription>
+        )}
+      </CardHeader>
+      <ScrollArea className="flex-grow">
+        <CardContent>
+          <div
+            className="group relative aspect-[3/2] w-full overflow-hidden rounded-lg"
+            onClick={openZoomView}
+            onContextMenu={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
+          >
+            <Image
+              src={obfuscatedImageUrl}
+              alt="Location to guess"
+              fill
+              priority
+              className="object-cover pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+              <ZoomIn className="h-12 w-12 text-white" />
+            </div>
+          </div>
+        </CardContent>
+      </ScrollArea>
+      {gameState === 'revealed' && setShowImageInResults && (
+        <CardFooter className="pt-6">
+          <Button variant="outline" className="w-full" onClick={() => setShowImageInResults(false)}>
+            <BookX className="mr-2 h-4 w-4" />
+            Show Score
+          </Button>
+        </CardFooter>
+      )}
+    </Card>
+  );
+});
+
+
 export function GameLayout() {
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [obfuscatedImageUrl, setObfuscatedImageUrl] = useState<string | null>(null);
@@ -200,6 +265,7 @@ export function GameLayout() {
     setTotalScore(prev => prev + newScore);
     setRoundScores(prev => [...prev, { locationName: currentLocation.name, score: newScore, time: finalElapsedTime }]);
     setGameState("revealed");
+    setShowImageInResults(false);
   };
 
   const handleNextRound = () => {
@@ -305,52 +371,6 @@ export function GameLayout() {
     setPan(prev => clampPan(prev.x, prev.y, zoomLevel));
   }, [zoomLevel, clampPan]);
 
-  const ImageCard = () => (
-    <Card className="overflow-hidden flex flex-col">
-      <CardHeader>
-        <CardTitle className="font-headline text-2xl">
-          Where is this?
-        </CardTitle>
-        <div className="flex justify-between items-center">
-            <CardDescription>
-                Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
-            </CardDescription>
-            <div className="flex items-center text-sm text-muted-foreground">
-                <Clock className="mr-1 h-4 w-4" />
-                <span>{(elapsedTime / 1000).toFixed(1)}s</span>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-grow">
-          <div 
-            className="relative aspect-[3/2] w-full group overflow-hidden rounded-lg"
-            onClick={openZoomView}
-            onContextMenu={(e) => e.preventDefault()}
-            onDragStart={(e) => e.preventDefault()}
-          >
-            <Image
-              src={obfuscatedImageUrl!}
-              alt="Location to guess"
-              fill
-              priority
-              className="object-cover pointer-events-none"
-            />
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-              <ZoomIn className="h-12 w-12 text-white" />
-            </div>
-          </div>
-      </CardContent>
-       {gameState === 'revealed' && (
-        <CardFooter>
-          <Button variant="outline" className="w-full" onClick={() => setShowImageInResults(prev => !prev)}>
-            <BookX className="mr-2 h-4 w-4" />
-            Show Score
-          </Button>
-        </CardFooter>
-      )}
-    </Card>
-  );
-
   const ResultsCard = () => (
     <Card className="animate-in fade-in-50 flex flex-col">
       <CardHeader>
@@ -365,7 +385,7 @@ export function GameLayout() {
         <div className="flex justify-between items-center text-lg">
           <span>Distance:</span>
           <span className="font-bold">
-            {distance < 10 
+            {distance < 1 
               ? `${(distance * 1000).toFixed(0)} m` 
               : `${distance.toFixed(2)} km`}
           </span>
@@ -381,7 +401,7 @@ export function GameLayout() {
         </div>
       </CardContent>
       <CardFooter>
-        <Button variant="outline" className="w-full" onClick={() => setShowImageInResults(prev => !prev)}>
+        <Button variant="outline" className="w-full" onClick={() => setShowImageInResults(true)}>
           <Eye className="mr-2 h-4 w-4" />
           Show Image
         </Button>
@@ -403,14 +423,58 @@ export function GameLayout() {
   return (
     <div className="h-full w-full relative">
        <div className={cn(
-        "h-full w-full grid md:grid-cols-2 space-y-2 md:space-y-0 md:gap-x-8 px-4 md:p-8 max-w-7xl mx-auto",
+        "h-full w-full grid md:grid-cols-2 space-y-2 md:gap-x-8 px-4 md:p-8 max-w-7xl mx-auto",
         isImageZoomed ? 'overflow-hidden' : 'overflow-y-auto'
       )}>
-        <div className="flex flex-col gap-4 min-h-[450px]">
+        <div className="flex flex-col gap-4 md:min-h-[450px]">
           {gameState === 'guessing' ? (
-            <ImageCard />
+            <Card className="flex flex-col h-full">
+              <CardHeader>
+                <CardTitle className="font-headline text-2xl">Where is this?</CardTitle>
+                <div className="flex justify-between items-center">
+                    <CardDescription>
+                        Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
+                    </CardDescription>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="mr-1 h-4 w-4" />
+                        <span>{(elapsedTime / 1000).toFixed(1)}s</span>
+                    </div>
+                </div>
+              </CardHeader>
+              <ScrollArea className="flex-grow">
+                <CardContent>
+                    <div 
+                      className="group relative aspect-[3/2] w-full overflow-hidden rounded-lg"
+                      onClick={openZoomView}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onDragStart={(e) => e.preventDefault()}
+                    >
+                      <Image
+                        src={obfuscatedImageUrl}
+                        alt="Location to guess"
+                        fill
+                        priority
+                        className="object-cover pointer-events-none"
+                      />
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        <ZoomIn className="h-12 w-12 text-white" />
+                      </div>
+                    </div>
+                </CardContent>
+              </ScrollArea>
+            </Card>
           ) : (
-            showImageInResults ? <ImageCard /> : <ResultsCard />
+            showImageInResults ? (
+              <ImageCard 
+                obfuscatedImageUrl={obfuscatedImageUrl}
+                openZoomView={openZoomView}
+                setShowImageInResults={setShowImageInResults}
+                gameState={gameState}
+                round={round}
+                totalRounds={totalRounds}
+                totalScore={totalScore}
+              />
+            ) : <ResultsCard />
           )}
         </div>
 
@@ -469,7 +533,7 @@ export function GameLayout() {
               className="will-change-transform"
             >
               <Image
-                src={obfuscatedImageUrl!}
+                src={obfuscatedImageUrl}
                 alt="Zoomed location"
                 width={1920}
                 height={1080}
@@ -482,7 +546,7 @@ export function GameLayout() {
             variant="ghost"
             size="icon"
             onClick={closeZoomView}
-            className="absolute top-4 left-4 z-[1002] text-white bg-black/50 hover:bg-black/75 hover:text-white"
+            className="absolute top-4 right-4 z-[1002] text-white bg-black/50 hover:bg-black/75 hover:text-white"
           >
             <X className="h-6 w-6" />
           </Button>
@@ -523,25 +587,22 @@ export function GameLayout() {
             <p className="text-4xl sm:text-5xl font-bold tracking-tight">{totalScore.toLocaleString()}</p>
             <p className="text-muted-foreground mt-1">Total Score</p>
           </div>
-          <div className="text-sm">
-            <h3 className="font-semibold mb-2">Round Summary:</h3>
-            <ScrollArea className="h-40">
-              <div className="flex justify-between font-medium text-muted-foreground px-2 py-1 border-b">
-                  <span className="flex-1 pr-2">Location</span>
-                  <span className="text-center">Time</span>
-                  <span className="text-right min-w-[80px]">Score</span>
-              </div>
-              <div className="space-y-1 mt-1">
-              {roundScores.map((r, i) => (
-                  <div key={i} className="flex justify-between items-start bg-muted/30 p-2 rounded-md">
-                      <span className="flex-1 pr-2">{i+1}. {r.locationName}</span>
-                      <span className="text-center text-muted-foreground">{`${((r.time || 0) / 1000).toFixed(1)}s`}</span>
-                      <span className="text-right font-medium min-w-[80px]">{r.score.toLocaleString()} pts</span>
-                  </div>
-              ))}
-              </div>
-            </ScrollArea>
-          </div>
+          <ScrollArea className="h-40">
+            <div className="flex justify-between items-start font-medium text-muted-foreground px-2 py-1 border-b">
+                <span className="flex-1 pr-2">Location</span>
+                <span className="text-center">Time</span>
+                <span className="text-right min-w-[80px]">Score</span>
+            </div>
+            <div className="space-y-1 mt-1">
+            {roundScores.map((r, i) => (
+                <div key={i} className="flex justify-between items-start bg-muted/30 p-2 rounded-md">
+                    <span className="flex-1 pr-2">{i+1}. {r.locationName}</span>
+                    <span className="text-center text-muted-foreground">{`${((r.time || 0) / 1000).toFixed(1)}s`}</span>
+                    <span className="text-right font-medium min-w-[80px]">{r.score.toLocaleString()} pts</span>
+                </div>
+            ))}
+            </div>
+          </ScrollArea>
           <AlertDialogFooter>
               <Button onClick={handleCopyResults} variant="outline" className="w-full sm:w-auto">
                 <ClipboardCopy className="mr-2 h-4 w-4" />
