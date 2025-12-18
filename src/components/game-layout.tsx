@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -23,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MapPin, Trophy, ClipboardCopy, Eye, ArrowRight, BookX, ZoomIn, X, Minus, Plus } from "lucide-react";
+import { MapPin, Trophy, ClipboardCopy, Eye, ArrowRight, BookX, ZoomIn, X, Minus, Plus, Clock } from "lucide-react";
 import type { LatLng, LatLngExpression, LeafletMouseEvent } from "leaflet";
 import { useRouter } from 'next/navigation';
 import { Separator } from "@/components/ui/separator";
@@ -34,6 +35,7 @@ type GameState = "guessing" | "revealed";
 type RoundScore = {
   locationName: string;
   score: number;
+  time: number;
 };
 
 const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => mod.MapWrapper), {
@@ -65,6 +67,10 @@ export function GameLayout() {
   const zoomContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
 
+  const [startTime, setStartTime] = useState<number>(0);
+  const [elapsedTime, setElapsedTime] = useState<number>(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const router = useRouter();
   const { toast } = useToast();
@@ -81,6 +87,21 @@ export function GameLayout() {
       document.body.classList.remove('overflow-hidden');
     };
   }, [isImageZoomed]);
+  
+  useEffect(() => {
+    if (gameState === 'guessing' && startTime > 0) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setElapsedTime(Date.now() - startTime);
+      }, 100);
+    } else if (gameState === 'revealed' && timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [gameState, startTime]);
 
   const startNewRound = useCallback((isReset = false) => {
     let newUsedLocations = isReset ? [] : usedLocations;
@@ -101,6 +122,8 @@ export function GameLayout() {
     setScore(0);
     setShowImageInResults(false);
     setIsImageZoomed(false);
+    setStartTime(Date.now());
+    setElapsedTime(0);
   }, [usedLocations]);
 
   const resetGame = useCallback(() => {
@@ -161,6 +184,10 @@ export function GameLayout() {
 
   const handleGuess = () => {
     if (!guess || !currentLocation) return;
+    
+    const finalElapsedTime = Date.now() - startTime;
+    setElapsedTime(finalElapsedTime);
+
     const dist = calculateDistance(
       guess.lat,
       guess.lng,
@@ -171,7 +198,7 @@ export function GameLayout() {
     setDistance(dist);
     setScore(newScore);
     setTotalScore(prev => prev + newScore);
-    setRoundScores(prev => [...prev, { locationName: currentLocation.name, score: newScore }]);
+    setRoundScores(prev => [...prev, { locationName: currentLocation.name, score: newScore, time: finalElapsedTime }]);
     setGameState("revealed");
   };
 
@@ -187,7 +214,7 @@ export function GameLayout() {
   const handleCopyResults = () => {
     const title = `NUSGuessr - Final Score: ${totalScore.toLocaleString()}`;
     const summary = roundScores.map(
-      (r, index) => `Round ${index + 1}: ${r.locationName} - ${r.score.toLocaleString()} pts`
+      (r, index) => `Round ${index + 1}: ${r.locationName} - ${r.score.toLocaleString()} pts (${(r.time / 1000).toFixed(1)}s)`
     ).join('\n');
     const url = 'https://russelldash332.github.io/NUSGuessr';
     
@@ -302,9 +329,15 @@ export function GameLayout() {
         <CardTitle className="font-headline text-2xl">
           Where is this?
         </CardTitle>
-        <CardDescription>
-          Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
-        </CardDescription>
+        <div className="flex justify-between items-center">
+            <CardDescription>
+                Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
+            </CardDescription>
+            <div className="flex items-center text-sm text-muted-foreground">
+                <Clock className="mr-1 h-4 w-4" />
+                <span>{(elapsedTime / 1000).toFixed(1)}s</span>
+            </div>
+        </div>
       </CardHeader>
       <CardContent className="flex-grow">
           <div 
@@ -355,6 +388,11 @@ export function GameLayout() {
               : `${distance.toFixed(2)} km`}
           </span>
         </div>
+        <div className="flex justify-between items-center text-lg">
+          <span>Time:</span>
+          <span className="font-bold">{(elapsedTime / 1000).toFixed(1)}s</span>
+        </div>
+        <Separator />
         <div className="flex justify-between items-center text-lg">
           <span>Round Score:</span>
           <span className="font-bold text-primary">{score.toLocaleString()} pts</span>
@@ -436,8 +474,8 @@ export function GameLayout() {
               zoomLevel > 1 ? 'cursor-grab' : 'cursor-default'
             )}
             onMouseDown={(e) => handlePanStart(e.clientX, e.clientY, e.currentTarget)}
-            onMouseUp={(e) => handlePanEnd(e.currentTarget)}
             onMouseMove={(e) => handlePanMove(e.clientX, e.clientY)}
+            onMouseUp={(e) => handlePanEnd(e.currentTarget)}
             onMouseLeave={(e) => handlePanEnd(e.currentTarget)}
             onTouchStart={(e) => handlePanStart(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget)}
             onTouchMove={(e) => handlePanMove(e.touches[0].clientX, e.touches[0].clientY)}
@@ -509,7 +547,10 @@ export function GameLayout() {
             {roundScores.map((r, i) => (
                 <div key={i} className="flex justify-between items-center bg-muted/50 p-2 rounded-md">
                     <span className="truncate pr-2">{i+1}. {r.locationName}</span>
-                    <span className="font-medium">{r.score.toLocaleString()} pts</span>
+                    <div className="flex items-center gap-x-2">
+                      <span className="text-muted-foreground text-xs">({(r.time / 1000).toFixed(1)}s)</span>
+                      <span className="font-medium">{r.score.toLocaleString()} pts</span>
+                    </div>
                 </div>
             ))}
             </div>
