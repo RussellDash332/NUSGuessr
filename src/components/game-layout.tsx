@@ -226,20 +226,36 @@ export function GameLayout() {
   };
   
   const clampPan = useCallback((x: number, y: number, currentZoom: number) => {
-    const container = zoomContainerRef.current;
-    const imageEl = imageRef.current?.querySelector('img');
-    if (!container || !imageEl) return { x, y };
+    if (!imageRef.current || !zoomContainerRef.current) return { x, y };
 
-    const containerRect = container.getBoundingClientRect();
-    const scaledWidth = imageEl.clientWidth * currentZoom;
-    const scaledHeight = imageEl.clientHeight * currentZoom;
+    const containerRect = zoomContainerRef.current.getBoundingClientRect();
+    
+    // The image's natural dimensions
+    const naturalWidth = 1920;
+    const naturalHeight = 1080;
+    
+    // Calculate the rendered dimensions of the image inside the container
+    const containerAspectRatio = containerRect.width / containerRect.height;
+    const imageAspectRatio = naturalWidth / naturalHeight;
 
+    let renderedWidth, renderedHeight;
+    if (containerAspectRatio > imageAspectRatio) {
+      renderedHeight = containerRect.height;
+      renderedWidth = renderedHeight * imageAspectRatio;
+    } else {
+      renderedWidth = containerRect.width;
+      renderedHeight = renderedWidth / imageAspectRatio;
+    }
+    
+    const scaledWidth = renderedWidth * currentZoom;
+    const scaledHeight = renderedHeight * currentZoom;
+    
     const maxPanX = Math.max(0, (scaledWidth - containerRect.width) / 2);
     const maxPanY = Math.max(0, (scaledHeight - containerRect.height) / 2);
 
     return {
-      x: Math.max(-maxPanX, Math.min(maxPanX, x)),
-      y: Math.max(-maxPanY, Math.min(maxPanY, y)),
+        x: Math.max(-maxPanX, Math.min(maxPanX, x)),
+        y: Math.max(-maxPanY, Math.min(maxPanY, y)),
     };
   }, []);
 
@@ -260,7 +276,7 @@ export function GameLayout() {
       
       setPan(prev => {
         const newPan = { x: prev.x + dx, y: prev.y + dy };
-        return newPan;
+        return clampPan(newPan.x, newPan.y, zoomLevel);
       });
   
       lastPanPosition.current = { x: clientX, y: clientY };
@@ -273,7 +289,6 @@ export function GameLayout() {
         if (currentTarget instanceof HTMLElement) {
           currentTarget.classList.remove('cursor-grabbing');
         }
-        setPan(prev => clampPan(prev.x, prev.y, zoomLevel));
     }
   };
 
@@ -368,7 +383,7 @@ export function GameLayout() {
   return (
     <div className="h-full w-full relative">
        <div className={cn(
-        "h-full w-full grid md:grid-cols-2 gap-4 md:gap-8 p-4 md:p-8 max-w-7xl mx-auto",
+        "h-full w-full grid md:grid-cols-2 space-y-2 md:space-y-0 md:gap-x-8 px-4 md:p-8 max-w-7xl mx-auto",
         isImageZoomed ? 'overflow-hidden' : 'overflow-y-auto'
       )}>
         <div className="flex flex-col gap-4 min-h-[450px]">
