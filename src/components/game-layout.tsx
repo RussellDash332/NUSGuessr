@@ -61,9 +61,9 @@ export function GameLayout() {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
-  const lastMousePosition = useRef({ x: 0, y: 0 });
+  const lastPanPosition = useRef({ x: 0, y: 0 });
   const zoomContainerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
+  const imageRef = useRef<HTMLDivElement>(null);
 
 
   const router = useRouter();
@@ -227,65 +227,76 @@ export function GameLayout() {
   
   const clampPan = useCallback((x: number, y: number, currentZoom: number) => {
     const container = zoomContainerRef.current;
-    const image = imageRef.current;
-    if (!container || !image) return { x, y };
-
-    const imageRect = image.getBoundingClientRect();
+    const imageEl = imageRef.current?.querySelector('img');
+    if (!container || !imageEl) return { x, y };
+  
     const containerRect = container.getBoundingClientRect();
+  
+    const imageAspectRatio = imageEl.naturalWidth / imageEl.naturalHeight;
+    const containerAspectRatio = containerRect.width / containerRect.height;
+  
+    let renderedImageWidth: number;
+    let renderedImageHeight: number;
+  
+    if (imageAspectRatio > containerAspectRatio) {
+      renderedImageWidth = containerRect.width;
+      renderedImageHeight = renderedImageWidth / imageAspectRatio;
+    } else {
+      renderedImageHeight = containerRect.height;
+      renderedImageWidth = renderedImageHeight * imageAspectRatio;
+    }
+  
+    const scaledImageWidth = renderedImageWidth * currentZoom;
+    const scaledImageHeight = renderedImageHeight * currentZoom;
+  
+    const overflowX = Math.max(0, (scaledImageWidth - containerRect.width) / 2);
+    const overflowY = Math.max(0, (scaledImageHeight - containerRect.height) / 2);
     
-    const scaledImageWidth = imageRect.width * currentZoom;
-    const scaledImageHeight = imageRect.height * currentZoom;
-    
-    const overflowX = Math.max(0, scaledImageWidth - containerRect.width);
-    const overflowY = Math.max(0, scaledImageHeight - containerRect.height);
-
-    const maxPanX = overflowX / 2 / currentZoom;
-    const maxPanY = overflowY / 2 / currentZoom;
-    
+    const maxPanX = overflowX;
+    const maxPanY = overflowY;
+  
     return {
       x: Math.max(-maxPanX, Math.min(maxPanX, x)),
       y: Math.max(-maxPanY, Math.min(maxPanY, y)),
     };
   }, []);
 
-  const onMouseDown = (e: React.MouseEvent) => {
+  const handlePanStart = (clientX: number, clientY: number, currentTarget: EventTarget | null) => {
     if (zoomLevel > 1) {
       isPanning.current = true;
-      lastMousePosition.current = { x: e.clientX, y: e.clientY };
-      e.currentTarget.classList.add('cursor-grabbing');
+      lastPanPosition.current = { x: clientX, y: clientY };
+      if (currentTarget instanceof HTMLElement) {
+        currentTarget.classList.add('cursor-grabbing');
+      }
     }
   };
-
-  const onMouseUp = (e: React.MouseEvent) => {
+  
+  const handlePanMove = (clientX: number, clientY: number) => {
+    if (isPanning.current) {
+      const dx = clientX - lastPanPosition.current.x;
+      const dy = clientY - lastPanPosition.current.y;
+      
+      setPan(prev => {
+        // The pan values are divided by zoomLevel because the transform is `scale(zoom) translate(pan)`.
+        // The translation happens in the scaled coordinate system.
+        const newPan = { x: prev.x + dx, y: prev.y + dy };
+        return newPan;
+      });
+  
+      lastPanPosition.current = { x: clientX, y: clientY };
+    }
+  };
+  
+  const handlePanEnd = (currentTarget: EventTarget | null) => {
     if (isPanning.current) {
         isPanning.current = false;
-        e.currentTarget.classList.remove('cursor-grabbing');
+        if (currentTarget instanceof HTMLElement) {
+          currentTarget.classList.remove('cursor-grabbing');
+        }
         setPan(prev => clampPan(prev.x, prev.y, zoomLevel));
     }
   };
 
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (isPanning.current) {
-      const dx = e.clientX - lastMousePosition.current.x;
-      const dy = e.clientY - lastMousePosition.current.y;
-      
-      setPan(prev => {
-        const newPan = { x: prev.x + dx / zoomLevel, y: prev.y + dy / zoomLevel };
-        return clampPan(newPan.x, newPan.y, zoomLevel);
-      });
-
-      lastMousePosition.current = { x: e.clientX, y: e.clientY };
-    }
-  };
-
-  const onMouseLeave = (e: React.MouseEvent) => {
-    if(isPanning.current) {
-      isPanning.current = false;
-      e.currentTarget.classList.remove('cursor-grabbing');
-      setPan(prev => clampPan(prev.x, prev.y, zoomLevel));
-    }
-  };
-  
   useEffect(() => {
     setPan(prev => clampPan(prev.x, prev.y, zoomLevel));
   }, [zoomLevel, clampPan]);
@@ -420,31 +431,35 @@ export function GameLayout() {
       
       {isImageZoomed && (
         <div
-          className="absolute inset-0 z-[1001] bg-black/80"
+          ref={zoomContainerRef}
+          className="absolute inset-0 z-[1001] bg-black/80 flex items-center justify-center overflow-hidden"
           onClick={(e) => e.target === e.currentTarget && closeZoomView()}
         >
           <div
-            ref={zoomContainerRef}
             className={cn(
-              "absolute inset-0 flex items-center justify-center overflow-auto",
+              "relative flex items-center justify-center w-full h-full p-4",
               zoomLevel > 1 ? 'cursor-grab' : 'cursor-default'
             )}
-            onMouseDown={onMouseDown}
-            onMouseUp={onMouseUp}
-            onMouseMove={onMouseMove}
-            onMouseLeave={onMouseLeave}
+            onMouseDown={(e) => handlePanStart(e.clientX, e.clientY, e.currentTarget)}
+            onMouseUp={(e) => handlePanEnd(e.currentTarget)}
+            onMouseMove={(e) => handlePanMove(e.clientX, e.clientY)}
+            onMouseLeave={(e) => handlePanEnd(e.currentTarget)}
+            onTouchStart={(e) => handlePanStart(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget)}
+            onTouchMove={(e) => handlePanMove(e.touches[0].clientX, e.touches[0].clientY)}
+            onTouchEnd={(e) => handlePanEnd(e.currentTarget)}
           >
-            <div className="flex items-center justify-center w-full h-full p-4">
-              <div style={{ transform: `scale(${zoomLevel}) translate(${pan.x}px, ${pan.y}px)` }}>
-                <Image
-                  ref={imageRef}
-                  src={obfuscatedImageUrl!}
-                  alt="Zoomed location"
-                  width={1920}
-                  height={1080}
-                  className="w-full h-auto max-w-[90vw] max-h-[80vh] object-contain pointer-events-none"
-                />
-              </div>
+            <div
+              ref={imageRef}
+              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})` }}
+              className="will-change-transform"
+            >
+              <Image
+                src={obfuscatedImageUrl!}
+                alt="Zoomed location"
+                width={1920}
+                height={1080}
+                className="w-full h-auto max-w-[90vw] max-h-[80vh] object-contain pointer-events-none"
+              />
             </div>
           </div>
           
