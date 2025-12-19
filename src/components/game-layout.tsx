@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperat
 import Image from "next/image";
 import dynamic from 'next/dynamic';
 import { locations as allLocations, type Location } from "@/lib/locations";
-import { calculateDistance, calculateScore } from "@/lib/utils";
+import { calculateDistance, calculateScore, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,7 +28,6 @@ import { MapPin, Trophy, ClipboardCopy, Eye, ArrowRight, BookX, ZoomIn, X, Minus
 import type { LatLng, LatLngExpression, LeafletMouseEvent } from "leaflet";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 type GameState = "guessing" | "revealed";
@@ -121,7 +120,7 @@ const GuessImage = memo(function GuessImage({
                                     src={obfuscatedImageUrl}
                                     alt="Location to guess"
                                     fill
-                                    priority
+                                    priority={round === 1}
                                     className="object-cover pointer-events-none"
                                     onLoad={onImageLoad}
                                     onError={onImageError}
@@ -146,6 +145,7 @@ interface ImageCardProps {
   gameState: GameState;
   onImageError: () => void;
   imageError: boolean;
+  round: number;
 }
 
 const ImageCard = React.memo(function ImageCard({
@@ -155,6 +155,7 @@ const ImageCard = React.memo(function ImageCard({
   gameState,
   onImageError,
   imageError,
+  round,
 }: ImageCardProps) {
   return (
     <Card className="flex flex-col h-full">
@@ -182,7 +183,7 @@ const ImageCard = React.memo(function ImageCard({
                   src={obfuscatedImageUrl}
                   alt="Location to guess"
                   fill
-                  priority
+                  priority={round === 1}
                   className="object-cover pointer-events-none"
                   onError={onImageError}
                 />
@@ -325,8 +326,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       }
       return;
     }
-    topOfGameRef.current?.scrollIntoView({ behavior: 'smooth' });
-
+    
     const nextLocation = locations[roundNum - 1];
     setCurrentLocation(nextLocation);
     setObfuscatedImageUrl(nextLocation.imageUrl);
@@ -343,6 +343,13 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     setElapsedTime(restoredElapsedTime);
     setStartTime(0);
   }, []);
+
+  // Scroll to top when a new round starts
+  useEffect(() => {
+    if (round > 1) { // Don't scroll on initial load
+      topOfGameRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [round]);
 
   // Initialize game
   useEffect(() => {
@@ -664,9 +671,9 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   };
 
   return (
-    <div ref={topOfGameRef} className="h-full w-full relative">
+    <div ref={topOfGameRef} className="h-full w-full">
        <div className={cn(
-        "h-full w-full grid md:grid-cols-2 space-y-2 md:gap-x-8 px-4 md:p-8 max-w-7xl mx-auto",
+        "grid md:grid-cols-2 space-y-2 md:gap-x-8 px-4 md:p-8 max-w-7xl mx-auto",
         isImageZoomed ? 'overflow-hidden' : ''
       )}>
         <div className="flex flex-col gap-4 md:min-h-[450px]">
@@ -692,6 +699,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
                 gameState={gameState}
                 onImageError={handleImageError}
                 imageError={imageError}
+                round={round}
               />
             ) : <ResultsCard />
           )}

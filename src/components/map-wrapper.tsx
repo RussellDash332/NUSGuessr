@@ -50,6 +50,8 @@ export function MapWrapper({
   const guessMarkerRef = useRef<L.Marker | null>(null);
   const actualMarkerRef = useRef<L.Marker | null>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
+  const prevIsRevealedRef = useRef<boolean>(isRevealed);
+
 
   useEffect(() => {
     if (mapContainerRef.current && !mapRef.current) {
@@ -116,6 +118,17 @@ export function MapWrapper({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+  
+    if (prevIsRevealedRef.current && !isRevealed) {
+      map.setView(center, zoom);
+    }
+  
+    prevIsRevealedRef.current = isRevealed;
+  }, [isRevealed, center, zoom]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
 
     // Manage guess marker
     if (guessPosition) {
@@ -140,7 +153,7 @@ export function MapWrapper({
       if (guessPosition && !polylineRef.current) {
         const latlngs = [guessPosition, actualPosition];
         polylineRef.current = L.polyline(latlngs, { color: 'black', weight: 3, opacity: 0.9 }).addTo(map);
-        map.fitBounds(L.latLngBounds(latlngs), { padding: [10, 10] });
+        map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50] });
       }
     } else {
       // Clean up revealed items
