@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, memo } from "react";
 import Image from "next/image";
 import dynamic from 'next/dynamic';
 import { locations as allLocations, type Location } from "@/lib/locations";
@@ -34,7 +34,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 type GameState = "guessing" | "revealed";
 type GameMode = "daily" | "practice";
 
-type RoundScore = {
+export type RoundScore = {
   score: number;
   time: number;
   locationName: string;
@@ -47,21 +47,30 @@ export type SavedProgress = {
     elapsedTime: number;
 }
 
+export type FinalResults = {
+    gameMode: GameMode;
+    totalScore: number;
+    roundScores: RoundScore[];
+    date: string;
+};
+
 const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => mod.MapWrapper), {
   ssr: false,
   loading: () => <div className="flex h-full w-full items-center justify-center bg-muted rounded-lg"><p>Loading Map...</p></div>,
 });
 
 
-const TimerDisplay = ({ elapsedTime }: { elapsedTime: number }) => (
-    <div className="flex items-center text-sm text-muted-foreground">
-        <Clock className="mr-1 h-4 w-4" />
-        <span>{(elapsedTime / 1000).toFixed(1)}s</span>
-    </div>
-);
+const TimerDisplay = memo(function TimerDisplay({ elapsedTime }: { elapsedTime: number }) {
+    return (
+        <div className="flex items-center text-sm text-muted-foreground">
+            <Clock className="mr-1 h-4 w-4" />
+            <span>{(elapsedTime / 1000).toFixed(1)}s</span>
+        </div>
+    );
+});
 
 
-const GuessImage = React.memo(function GuessImage({
+const GuessImage = memo(function GuessImage({
     obfuscatedImageUrl,
     imageError,
     onImageError,
@@ -246,7 +255,7 @@ const generateGameLocations = (mode: GameMode, allLocs: Location[]): Location[] 
 
 interface GameLayoutProps {
     gameMode: GameMode;
-    onExit: (modeCompleted?: GameMode, state?: SavedProgress) => void;
+    onExit: (results?: FinalResults) => void;
     savedProgress: SavedProgress | null;
 }
 
@@ -254,7 +263,9 @@ const formatDate = (date: Date): string => {
     const day = date.getDate();
     const month = date.toLocaleString('default', { month: 'long' });
     const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    // Use UTC methods to avoid timezone issues when creating the string
+    const dateObj = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    return `${dateObj.getUTCDate()} ${dateObj.toLocaleString('default', { month: 'long' })} ${dateObj.getUTCFullYear()}`;
 };
 
 const getTodayDateString = () => {
@@ -471,8 +482,14 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     const title = `${modeTitle} - Final Score: ${totalScore.toLocaleString()}`;
     
     const summary = finalRoundScoresForDisplay.map(
-      (r, index) => `Round ${index + 1}: ${r.locationName} - ${r.score.toLocaleString()} pts (${(r.time / 1000).toFixed(1)}s)`
+      (r, index) => {
+        if (gameMode === 'daily') {
+          return `Round ${index + 1}: ${r.score.toLocaleString()} pts (${(r.time / 1000).toFixed(1)}s)`;
+        }
+        return `Round ${index + 1}: ${r.locationName} - ${r.score.toLocaleString()} pts (${(r.time / 1000).toFixed(1)}s)`;
+      }
     ).join('\n');
+
     const url = 'https://russelldash332.github.io/NUSGuessr';
     
     const textToCopy = `${title}\n\n${summary}\n\nPlay here: ${url}`;
@@ -622,6 +639,16 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     return { ...rs, locationName };
   });
 
+  const handleExitWithResults = () => {
+    const finalResults: FinalResults = {
+        gameMode,
+        totalScore,
+        roundScores: finalRoundScoresForDisplay,
+        date: getTodayDateString()
+    };
+    onExit(finalResults);
+  };
+
   return (
     <div className="h-full w-full relative">
        <div className={cn(
@@ -706,7 +733,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
           >
             <div
               ref={imageRef}
-              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`, objectFit: 'cover' }}
+              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})` }}
               className="will-change-transform"
             >
               {imageError ? (
@@ -759,12 +786,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
         </div>
       )}
 
-      <AlertDialog open={isGameOver} onOpenChange={(open) => {
-        if (!open) {
-            onExit(gameMode);
-        }
-        setIsGameOver(open);
-      }}>
+      <AlertDialog open={isGameOver} onOpenChange={(open) => !open && handleExitWithResults()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center justify-center sm:justify-start gap-2">
@@ -804,7 +826,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
                 Copy Results
               </Button>
               <AlertDialogAction asChild>
-                  <Button onClick={() => onExit(gameMode)} className="w-full sm:w-auto">
+                  <Button onClick={handleExitWithResults} className="w-full sm:w-auto">
                       Back to Menu
                   </Button>
               </AlertDialogAction>

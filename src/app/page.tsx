@@ -22,9 +22,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, BrainCircuit, Lock, Play } from "lucide-react";
+import { Calendar, BrainCircuit, Play, ClipboardCopy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import type { RoundScore, SavedProgress, FinalResults } from "@/components/game-layout";
 
 type GameMode = "daily" | "practice";
 
@@ -33,19 +34,13 @@ const getTodayDateString = () => {
   return today.toISOString().split('T')[0];
 };
 
-type DailyProgress = {
-    round: number;
-    totalScore: number;
-    roundScores: any[];
-    elapsedTime: number; // Changed from startTime
+const formatDate = (date: Date): string => {
+    const day = date.getDate();
+    const month = date.toLocaleString('default', { month: 'long' });
+    const year = date.getFullYear();
+    const dateObj = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    return `${dateObj.getUTCDate()} ${dateObj.toLocaleString('default', { month: 'long' })} ${dateObj.getUTCFullYear()}`;
 };
-
-type GameStateForSave = {
-    round: number;
-    totalScore: number;
-    roundScores: any[];
-    elapsedTime: number;
-}
 
 const HeaderContent = memo(function HeaderContent({ gameMode, onReturnToLanding }: { gameMode: GameMode | null, onReturnToLanding: () => void}) {
   return (
@@ -76,21 +71,42 @@ export default function Home() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isConfirmingExit, setIsConfirmingExit] = useState(false);
   const [dailyChallengeCompleted, setDailyChallengeCompleted] = useState(false);
-  const [dailyProgress, setDailyProgress] = useState<DailyProgress | null>(null);
+  const [dailyProgress, setDailyProgress] = useState<SavedProgress | null>(null);
+  const [dailyResults, setDailyResults] = useState<FinalResults | null>(null);
   const [countdown, setCountdown] = useState("");
   const { toast } = useToast();
-  const gameLayoutRef = useRef<{ getCurrentState: () => GameStateForSave }>(null);
+  const gameLayoutRef = useRef<{ getCurrentState: () => SavedProgress }>(null);
 
 
   const checkDailyStatus = () => {
     const today = getTodayDateString();
     const lastPlayed = localStorage.getItem('nusguessr_daily_last_played');
+    
     if (lastPlayed === today) {
       setDailyChallengeCompleted(true);
       setDailyProgress(null);
-      localStorage.removeItem('nusguessr_daily_progress'); // Clean up old progress
+      localStorage.removeItem('nusguessr_daily_progress');
+      
+      const resultsRaw = localStorage.getItem('nusguessr_daily_results');
+      if (resultsRaw) {
+        try {
+          const results = JSON.parse(resultsRaw);
+          if (results.date === today) {
+            setDailyResults(results);
+          } else {
+            localStorage.removeItem('nusguessr_daily_results');
+            setDailyResults(null);
+          }
+        } catch {
+          localStorage.removeItem('nusguessr_daily_results');
+          setDailyResults(null);
+        }
+      } else {
+        setDailyResults(null);
+      }
     } else {
       setDailyChallengeCompleted(false);
+      setDailyResults(null);
       const progressRaw = localStorage.getItem('nusguessr_daily_progress');
       if (progressRaw) {
           try {
@@ -128,6 +144,7 @@ export default function Home() {
         if (diff <= 0) {
           setDailyChallengeCompleted(false);
           localStorage.removeItem('nusguessr_daily_last_played');
+          localStorage.removeItem('nusguessr_daily_results');
           setCountdown("");
           checkDailyStatus(); // Re-check status
           return;
@@ -165,13 +182,17 @@ export default function Home() {
     setIsConfirming(false);
   };
 
-  const handleExitGame = (modeCompleted?: GameMode) => {
-    setGameMode(null);
-    if(modeCompleted === 'daily') {
-      localStorage.setItem('nusguessr_daily_last_played', getTodayDateString());
+  const handleExitGame = (results?: FinalResults) => {
+    if(results && results.gameMode === 'daily') {
+      const today = getTodayDateString();
+      const resultsToSave = { ...results, date: today };
+      localStorage.setItem('nusguessr_daily_last_played', today);
+      localStorage.setItem('nusguessr_daily_results', JSON.stringify(resultsToSave));
       localStorage.removeItem('nusguessr_daily_progress');
+      setDailyResults(resultsToSave);
+      setDailyChallengeCompleted(true);
     }
-    checkDailyStatus();
+    setGameMode(null);
   };
   
   const returnToLanding = () => {
@@ -188,21 +209,53 @@ export default function Home() {
   const handleConfirmExit = () => {
     if (gameMode === 'daily' && gameLayoutRef.current) {
         const currentState = gameLayoutRef.current.getCurrentState();
-        const progressToSave = {
-            date: getTodayDateString(),
-            data: {
-                round: currentState.round,
-                totalScore: currentState.totalScore,
-                roundScores: currentState.roundScores.map(({ score, time }) => ({ score, time })),
-                elapsedTime: currentState.elapsedTime,
-            }
-        };
-        localStorage.setItem('nusguessr_daily_progress', JSON.stringify(progressToSave));
+        if (currentState.round <= 10) { // Assuming 10 rounds max
+            const progressToSave = {
+                date: getTodayDateString(),
+                data: {
+                    round: currentState.round,
+                    totalScore: currentState.totalScore,
+                    roundScores: currentState.roundScores.map(({ score, time }) => ({ score, time })),
+                    elapsedTime: currentState.elapsedTime,
+                }
+            };
+            localStorage.setItem('nusguessr_daily_progress', JSON.stringify(progressToSave));
+        }
     }
     setGameMode(null);
     setIsConfirmingExit(false);
     checkDailyStatus();
   }
+
+  const handleCopyDailyResults = () => {
+    if (!dailyResults) return;
+
+    const { totalScore, roundScores, date } = dailyResults;
+    const dateString = formatDate(new Date(date));
+    const title = `NUSGuessr Daily - ${dateString} - Final Score: ${totalScore.toLocaleString()}`;
+    
+    const summary = roundScores.map(
+      (r, index) => `Round ${index + 1}: ${r.score.toLocaleString()} pts (${(r.time / 1000).toFixed(1)}s)`
+    ).join('\n');
+
+    const url = 'https://russelldash332.github.io/NUSGuessr';
+    
+    const textToCopy = `${title}\n\n${summary}\n\nPlay here: ${url}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      toast({
+        title: "Copied to clipboard!",
+        description: "Your daily results have been copied.",
+      });
+    }).catch(err => {
+      console.error('Failed to copy results: ', err);
+      toast({
+        variant: 'destructive',
+        title: "Oops!",
+        description: "Could not copy results to clipboard.",
+      });
+    });
+  };
 
   const isResumingDaily = pendingMode === 'daily' && dailyProgress;
 
@@ -226,7 +279,9 @@ export default function Home() {
                     <Calendar className="h-10 w-10 text-primary" />
                     <div>
                       <CardTitle className="text-2xl font-headline">Daily Challenge</CardTitle>
-                      {dailyProgress ? (
+                      {dailyChallengeCompleted ? (
+                         <CardDescription>Next challenge in {countdown}</CardDescription>
+                      ) : dailyProgress ? (
                         <CardDescription>Resume your game! Round {dailyProgress.round} of 10.</CardDescription>
                       ) : (
                         <CardDescription>A new set of 10 locations every day.</CardDescription>
@@ -235,21 +290,23 @@ export default function Home() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" onClick={() => handleModeSelect("daily")} disabled={dailyChallengeCompleted}>
-                    {dailyChallengeCompleted ? (
-                      <>
-                        <Lock className="mr-2 h-4 w-4" />
-                        Available in {countdown}
-                      </>
-                    ) : dailyProgress ? (
-                      <>
-                        <Play className="mr-2 h-4 w-4" />
-                        Resume Daily
-                      </>
-                    ) : (
-                      "Play Daily"
-                    )}
-                  </Button>
+                  {dailyChallengeCompleted ? (
+                    <Button className="w-full" onClick={handleCopyDailyResults} disabled={!dailyResults}>
+                      <ClipboardCopy className="mr-2 h-4 w-4" />
+                      Copy Results
+                    </Button>
+                  ) : (
+                    <Button className="w-full" onClick={() => handleModeSelect("daily")}>
+                      {dailyProgress ? (
+                        <>
+                          <Play className="mr-2 h-4 w-4" />
+                          Resume Daily
+                        </>
+                      ) : (
+                        "Play Daily"
+                      )}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
               <Card className="hover:shadow-lg transition-shadow">
