@@ -63,6 +63,10 @@ export function MapWrapper({
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(mapRef.current);
+      
+      if (mapRef.current) {
+        mapRef.current.doubleClickZoom.disable();
+      }
     }
   }, [center, zoom]);
   
@@ -77,7 +81,6 @@ export function MapWrapper({
       map.boxZoom.enable();
       map.keyboard.enable();
       if (map.tap) map.tap.enable();
-      map.doubleClickZoom.disable();
       if (mapContainerRef.current) {
         mapContainerRef.current.style.cursor = 'grab';
       }
