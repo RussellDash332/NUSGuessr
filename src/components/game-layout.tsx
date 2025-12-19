@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import dynamic from 'next/dynamic';
-import { locations, type Location } from "@/lib/locations";
+import { locations as allLocations, type Location } from "@/lib/locations";
 import { calculateDistance, calculateScore } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MapPin, Trophy, ClipboardCopy, Eye, ArrowRight, BookX, ZoomIn, X, Minus, Plus, Clock } from "lucide-react";
+import { MapPin, Trophy, ClipboardCopy, Eye, ArrowRight, BookX, ZoomIn, X, Minus, Plus, Clock, ImageOff } from "lucide-react";
 import type { LatLng, LatLngExpression, LeafletMouseEvent } from "leaflet";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -32,18 +32,25 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 type GameState = "guessing" | "revealed";
+type GameMode = "daily" | "practice";
+
 type RoundScore = {
-  locationName: string;
   score: number;
   time: number;
 };
+
+// locationName is removed for security
+type SavedProgress = {
+    round: number;
+    totalScore: number;
+    roundScores: Omit<RoundScore, 'locationName'>[];
+    startTime?: number; // Add startTime to saved progress
+}
 
 const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => mod.MapWrapper), {
   ssr: false,
   loading: () => <div className="flex h-full w-full items-center justify-center bg-muted rounded-lg"><p>Loading Map...</p></div>,
 });
-
-const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 interface ImageCardProps {
   obfuscatedImageUrl: string;
@@ -53,6 +60,8 @@ interface ImageCardProps {
   round: number;
   totalRounds: number;
   totalScore: number;
+  onImageError: () => void;
+  imageError: boolean;
 }
 
 const ImageCard = React.memo(function ImageCard({
@@ -63,6 +72,8 @@ const ImageCard = React.memo(function ImageCard({
   round,
   totalRounds,
   totalScore,
+  onImageError,
+  imageError,
 }: ImageCardProps) {
   return (
     <Card className="flex flex-col h-full">
@@ -80,20 +91,30 @@ const ImageCard = React.memo(function ImageCard({
         <CardContent>
           <div
             className="group relative aspect-[3/2] w-full overflow-hidden rounded-lg"
-            onClick={openZoomView}
+            onClick={!imageError ? openZoomView : undefined}
             onContextMenu={(e) => e.preventDefault()}
             onDragStart={(e) => e.preventDefault()}
           >
-            <Image
-              src={obfuscatedImageUrl}
-              alt="Location to guess"
-              fill
-              priority
-              className="object-cover pointer-events-none"
-            />
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-              <ZoomIn className="h-12 w-12 text-white" />
-            </div>
+            {imageError ? (
+                <div className="absolute inset-0 bg-muted text-muted-foreground flex flex-col items-center justify-center text-center p-4">
+                  <ImageOff className="h-10 w-10 mb-2" />
+                  <span>Image not available at the moment :(</span>
+                </div>
+            ) : (
+              <>
+                <Image
+                  src={obfuscatedImageUrl}
+                  alt="Location to guess"
+                  fill
+                  priority
+                  className="object-cover pointer-events-none"
+                  onError={onImageError}
+                />
+                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <ZoomIn className="h-12 w-12 text-white" />
+                </div>
+              </>
+            )}
           </div>
         </CardContent>
       </ScrollArea>
@@ -109,8 +130,76 @@ const ImageCard = React.memo(function ImageCard({
   );
 });
 
+// Simple seeded PRNG
+const mulberry32 = (a: number) => {
+  return () => {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
 
-export function GameLayout() {
+// Seeded shuffle
+const seededShuffle = <T,>(array: T[], seed: number): T[] => {
+  const newArray = [...array];
+  const random = mulberry32(seed);
+  let currentIndex = newArray.length;
+  let randomIndex;
+
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(random() * currentIndex);
+    currentIndex--;
+    [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
+  }
+
+  return newArray;
+};
+
+const generateGameLocations = (mode: GameMode, allLocs: Location[]): Location[] => {
+    const count = mode === 'daily' ? 10 : 5;
+    if (allLocs.length === 0) return [];
+
+    let result: Location[];
+    if (mode === 'daily') {
+        const today = new Date();
+        const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+        result = seededShuffle(allLocs, seed);
+    } else {
+        result = [...allLocs].sort(() => 0.5 - Math.random());
+    }
+
+    if (result.length < count) {
+      const randomFn = mode === 'daily' ? mulberry32(result.length + 1) : Math.random;
+      while (result.length < count) {
+        result.push(allLocs[Math.floor(randomFn() * allLocs.length)]);
+      }
+    }
+  
+    return result.slice(0, count);
+};
+
+
+interface GameLayoutProps {
+    gameMode: GameMode;
+    onExit: (modeCompleted?: GameMode) => void;
+    savedProgress: SavedProgress | null;
+}
+
+const formatDate = (date: Date): string => {
+    const day = date.getDate();
+    const month = date.toLocaleString('default', { month: 'long' });
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+};
+
+const getTodayDateString = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+};
+
+export function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps) {
+  const [gameLocations, setGameLocations] = useState<Location[]>([]);
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [obfuscatedImageUrl, setObfuscatedImageUrl] = useState<string | null>(null);
   const [guess, setGuess] = useState<LatLng | null>(null);
@@ -119,11 +208,11 @@ export function GameLayout() {
   const [score, setScore] = useState<number>(0);
   const [totalScore, setTotalScore] = useState<number>(0);
   const [round, setRound] = useState<number>(1);
-  const [usedLocations, setUsedLocations] = useState<string[]>([]);
   const [roundScores, setRoundScores] = useState<RoundScore[]>([]);
   const [isGameOver, setIsGameOver] = useState(false);
   const [showImageInResults, setShowImageInResults] = useState(false);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
   const [zoomLevel, setZoomLevel] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -136,10 +225,81 @@ export function GameLayout() {
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const timerRef = useRef<number | null>(null);
 
-
   const { toast } = useToast();
   
-  const totalRounds = locations.length;
+  const totalRounds = gameLocations.length;
+
+  const startNewRound = useCallback((restoredStartTime?: number) => {
+    if (round > gameLocations.length || gameLocations.length === 0) {
+      if (gameLocations.length > 0) {
+        setIsGameOver(true);
+      }
+      return;
+    }
+
+    const nextLocation = gameLocations[round - 1];
+    setCurrentLocation(nextLocation);
+    setObfuscatedImageUrl(null);
+    setGuess(null);
+    setGameState("guessing");
+    setDistance(0);
+    setScore(0);
+    setShowImageInResults(false);
+    setIsImageZoomed(false);
+    setImageError(false);
+    
+    const newStartTime = restoredStartTime || Date.now();
+    setStartTime(newStartTime);
+    setElapsedTime(restoredStartTime ? Date.now() - restoredStartTime : 0);
+
+    if (gameMode === 'daily') {
+        const progress = {
+            date: getTodayDateString(),
+            data: {
+                round: round,
+                totalScore: totalScore,
+                roundScores: roundScores.map(({ score, time }) => ({ score, time })),
+                startTime: newStartTime,
+            }
+        };
+        localStorage.setItem('nusguessr_daily_progress', JSON.stringify(progress));
+    }
+
+  }, [round, gameLocations, gameMode, totalScore, roundScores]);
+
+  // Initialize game based on mode
+  useEffect(() => {
+    const selectedLocations = generateGameLocations(gameMode, allLocations);
+    setGameLocations(selectedLocations);
+    
+    if (savedProgress) {
+        setRound(savedProgress.round);
+        setTotalScore(savedProgress.totalScore);
+        // We don't have locationName here, but we will add it back in the game over screen
+        setRoundScores(savedProgress.roundScores.map(rs => ({ ...rs, locationName: '' })));
+    } else {
+        setTotalScore(0);
+        setRound(1);
+        setRoundScores([]);
+    }
+    setIsGameOver(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameMode]);
+  
+  
+  useEffect(() => {
+    if (gameLocations.length > 0) {
+      if (savedProgress && savedProgress.round === round) {
+          startNewRound(savedProgress.startTime);
+      } else if (!savedProgress || savedProgress.round !== round) {
+          startNewRound();
+      }
+    }
+  // This should only run when the round number changes or when the game locations are set.
+  // We remove savedProgress from dependencies to avoid re-running this on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameLocations, round]);
+
 
   useEffect(() => {
     if (isImageZoomed) {
@@ -167,68 +327,22 @@ export function GameLayout() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [gameState, startTime]);
-
-  const startNewRound = useCallback((isReset = false) => {
-    let newUsedLocations = isReset ? [] : usedLocations;
-    let availableLocations = locations.filter(loc => !newUsedLocations.includes(loc.id));
-    
-    if (availableLocations.length === 0) {
-      availableLocations = locations;
-      newUsedLocations = [];
-    }
-
-    const nextLocation = getRandomItem(availableLocations);
-    setCurrentLocation(nextLocation);
-    setObfuscatedImageUrl(null); // Reset image while new one loads
-    setUsedLocations([...newUsedLocations, nextLocation.id]);
-    setGuess(null);
-    setGameState("guessing");
-    setDistance(0);
-    setScore(0);
-    setShowImageInResults(false);
-    setIsImageZoomed(false);
-    setStartTime(Date.now());
-    setElapsedTime(0);
-  }, [usedLocations]);
-
-  const resetGame = useCallback(() => {
-    setTotalScore(0);
-    setRound(1);
-    setUsedLocations([]);
-    setRoundScores([]);
-    setIsGameOver(false);
-    startNewRound(true);
-  }, [startNewRound]);
-
+  
   useEffect(() => {
-    if (!currentLocation) {
-        startNewRound(true);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (currentLocation?.image.imageUrl) {
+    if (currentLocation?.imageUrl) {
       let isCancelled = false;
       
       const fetchAndEncode = async () => {
         try {
-          const response = await fetch(currentLocation.image.imageUrl);
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          const blob = await response.blob();
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            if (!isCancelled) {
-              setObfuscatedImageUrl(reader.result as string);
-            }
-          };
-          reader.readAsDataURL(blob);
-        } catch (error) {
-          console.error("Failed to fetch and encode image:", error);
+          // We no longer need to fetch and encode, next/image handles this.
+          // Directly set the image URL.
           if (!isCancelled) {
-            setObfuscatedImageUrl(currentLocation.image.imageUrl);
+            setObfuscatedImageUrl(currentLocation.imageUrl);
+          }
+        } catch (error) {
+          console.error("Error with image URL:", error);
+          if (!isCancelled) {
+            setObfuscatedImageUrl(currentLocation.imageUrl);
           }
         }
       };
@@ -260,26 +374,56 @@ export function GameLayout() {
       currentLocation.coordinates.lng
     );
     const newScore = calculateScore(dist);
+    const newTotalScore = totalScore + newScore;
+    const newRoundScores = [...roundScores, { locationName: currentLocation.name, score: newScore, time: finalElapsedTime }];
+
     setDistance(dist);
     setScore(newScore);
-    setTotalScore(prev => prev + newScore);
-    setRoundScores(prev => [...prev, { locationName: currentLocation.name, score: newScore, time: finalElapsedTime }]);
+    setTotalScore(newTotalScore);
+    setRoundScores(newRoundScores);
     setGameState("revealed");
     setShowImageInResults(false);
+
+    if (gameMode === 'daily') {
+        const isGameFinished = round >= totalRounds;
+        if (!isGameFinished) {
+            // Save progress for the *next* round
+            const nextRoundProgress = {
+                date: getTodayDateString(),
+                data: {
+                    round: round + 1,
+                    totalScore: newTotalScore,
+                    roundScores: newRoundScores.map(({ score, time }) => ({ score, time })),
+                }
+            };
+            localStorage.setItem('nusguessr_daily_progress', JSON.stringify(nextRoundProgress));
+        } else {
+            // Game is finished, so mark it as completed for the day
+            localStorage.setItem('nusguessr_daily_last_played', getTodayDateString());
+            localStorage.removeItem('nusguessr_daily_progress');
+        }
+    }
   };
 
   const handleNextRound = () => {
-    if (round < locations.length) {
+    if (round < totalRounds) {
       setRound(prev => prev + 1);
-      startNewRound();
     } else {
       setIsGameOver(true);
     }
   };
 
+  const handleEndGame = () => {
+    onExit();
+  }
+
   const handleCopyResults = () => {
-    const title = `NUSGuessr - Final Score: ${totalScore.toLocaleString()}`;
-    const summary = roundScores.map(
+    const today = new Date();
+    const dateString = formatDate(today);
+    const modeTitle = gameMode === 'daily' ? `NUSGuessr Daily - ${dateString}` : `NUSGuessr Practice`;
+    const title = `${modeTitle} - Final Score: ${totalScore.toLocaleString()}`;
+    
+    const summary = finalRoundScoresForDisplay.map(
       (r, index) => `Round ${index + 1}: ${r.locationName} - ${r.score.toLocaleString()} pts (${(r.time / 1000).toFixed(1)}s)`
     ).join('\n');
     const url = 'https://russelldash332.github.io/NUSGuessr';
@@ -302,6 +446,7 @@ export function GameLayout() {
   };
 
   const openZoomView = () => {
+    if (imageError) return;
     setIsImageZoomed(true);
     setZoomLevel(1);
     setPan({ x: 0, y: 0 });
@@ -420,6 +565,12 @@ export function GameLayout() {
   const mapCenter: LatLngExpression = [1.2991, 103.7764]; // Center of NUS
   const actualPosition: LatLng | null = currentLocation ? { lat: currentLocation.coordinates.lat, lng: currentLocation.coordinates.lng } : null;
 
+  // Re-hydrate location names for game over screen
+  const finalRoundScoresForDisplay = roundScores.map((rs, index) => {
+    const locationName = gameLocations[index]?.name || "Unknown Location";
+    return { ...rs, locationName };
+  });
+
   return (
     <div className="h-full w-full relative">
        <div className={cn(
@@ -445,20 +596,30 @@ export function GameLayout() {
                 <CardContent>
                     <div 
                       className="group relative aspect-[3/2] w-full overflow-hidden rounded-lg"
-                      onClick={openZoomView}
+                      onClick={!imageError ? openZoomView : undefined}
                       onContextMenu={(e) => e.preventDefault()}
                       onDragStart={(e) => e.preventDefault()}
                     >
-                      <Image
-                        src={obfuscatedImageUrl}
-                        alt="Location to guess"
-                        fill
-                        priority
-                        className="object-cover pointer-events-none"
-                      />
-                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                        <ZoomIn className="h-12 w-12 text-white" />
-                      </div>
+                      {imageError ? (
+                        <div className="absolute inset-0 bg-muted text-muted-foreground flex flex-col items-center justify-center text-center p-4">
+                          <ImageOff className="h-10 w-10 mb-2" />
+                          <span>Image not available at the moment :(</span>
+                        </div>
+                      ) : (
+                        <>
+                          <Image
+                            src={obfuscatedImageUrl}
+                            alt="Location to guess"
+                            fill
+                            priority
+                            className="object-cover pointer-events-none"
+                            onError={() => setImageError(true)}
+                          />
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            <ZoomIn className="h-12 w-12 text-white" />
+                          </div>
+                        </>
+                      )}
                     </div>
                 </CardContent>
               </ScrollArea>
@@ -473,6 +634,8 @@ export function GameLayout() {
                 round={round}
                 totalRounds={totalRounds}
                 totalScore={totalScore}
+                onImageError={() => setImageError(true)}
+                imageError={imageError}
               />
             ) : <ResultsCard />
           )}
@@ -532,13 +695,21 @@ export function GameLayout() {
               style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})` }}
               className="will-change-transform"
             >
-              <Image
-                src={obfuscatedImageUrl}
-                alt="Zoomed location"
-                width={1920}
-                height={1080}
-                className="w-full h-auto max-w-[90vw] max-h-[80vh] object-contain pointer-events-none"
-              />
+              {imageError ? (
+                  <div className="bg-muted text-muted-foreground flex flex-col items-center justify-center text-center p-8 rounded-lg">
+                      <ImageOff className="h-12 w-12 mb-4" />
+                      <p>Image not available at the moment :(</p>
+                  </div>
+              ) : (
+                <Image
+                  src={obfuscatedImageUrl}
+                  alt="Zoomed location"
+                  width={1920}
+                  height={1080}
+                  className="w-full h-auto max-w-[90vw] max-h-[80vh] object-contain pointer-events-none"
+                  onError={() => setImageError(true)}
+                />
+              )}
             </div>
           </div>
           
@@ -551,28 +722,35 @@ export function GameLayout() {
             <X className="h-6 w-6" />
           </Button>
 
-          <div className="absolute bottom-4 right-4 z-[1002] flex flex-col gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleZoom('in')}
-              className="text-white bg-black/50 hover:bg-black/75 hover:text-white"
-            >
-              <Plus className="h-6 w-6" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleZoom('out')}
-              className="text-white bg-black/50 hover:bg-black/75 hover:text-white"
-            >
-              <Minus className="h-6 w-6" />
-            </Button>
-          </div>
+          {!imageError && (
+            <div className="absolute bottom-4 right-4 z-[1002] flex flex-col gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleZoom('in')}
+                className="text-white bg-black/50 hover:bg-black/75 hover:text-white"
+              >
+                <Plus className="h-6 w-6" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleZoom('out')}
+                className="text-white bg-black/50 hover:bg-black/75 hover:text-white"
+              >
+                <Minus className="h-6 w-6" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
-      <AlertDialog open={isGameOver} onOpenChange={setIsGameOver}>
+      <AlertDialog open={isGameOver} onOpenChange={(open) => {
+        if (!open) {
+            onExit(gameMode);
+        }
+        setIsGameOver(open);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center justify-center sm:justify-start gap-2">
@@ -580,7 +758,10 @@ export function GameLayout() {
               Game Over!
             </AlertDialogTitle>
             <AlertDialogDescription>
-              You've completed all {totalRounds} rounds. Here's your final score:
+              {gameMode === 'daily' && `You've completed the Daily Challenge for ${formatDate(new Date())}.`}
+              {gameMode === 'practice' && `You've completed your practice round.`}
+              <br/>
+              Here's your final score:
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="my-4 text-center">
@@ -594,7 +775,7 @@ export function GameLayout() {
                 <span className="text-right min-w-[80px]">Score</span>
             </div>
             <div className="space-y-1 mt-1">
-            {roundScores.map((r, i) => (
+            {finalRoundScoresForDisplay.map((r, i) => (
                 <div key={i} className="flex justify-between items-start bg-muted/30 p-2 rounded-md">
                     <span className="flex-1 pr-2">{i+1}. {r.locationName}</span>
                     <span className="text-center text-muted-foreground">{`${((r.time || 0) / 1000).toFixed(1)}s`}</span>
@@ -609,8 +790,8 @@ export function GameLayout() {
                 Copy Results
               </Button>
               <AlertDialogAction asChild>
-                  <Button onClick={resetGame} className="w-full sm:w-auto">
-                      Play Again
+                  <Button onClick={() => onExit(gameMode)} className="w-full sm:w-auto">
+                      Back to Menu
                   </Button>
               </AlertDialogAction>
           </AlertDialogFooter>

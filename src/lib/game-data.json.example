@@ -1,54 +1,157 @@
 {
   "locations": [
     {
-      "id": "loc1",
-      "name": "University Town (UTown)",
-      "coordinates": { "lat": 1.3046, "lng": 103.7725 },
-      "image": {
-        "description": "A bustling view of University Town (UTown) at NUS, a hub for student life and learning.",
-        "imageUrl": "https://images.unsplash.com/flagged/photo-1554473675-d0904f3cbf38?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx1bml2ZXJzaXR5JTIwY2FtcHVzfGVufDB8fHx8MTc2MzkyNTY4NHww&ixlib=rb-4.1.0&q=80&w=1080",
-        "imageHint": "university campus"
-      }
+      "id": "pgp",
+      "name": "Prince George's Park Residences",
+      "coordinates": {
+        "lat": 1.291038,
+        "lng": 103.780830
+      },
+      "imageUrl": "https://www.me.com.sg/resources/ck/images/projects/2002_spaceframe/NUS%20PGP%202.jpg"
     },
     {
-      "id": "loc2",
-      "name": "NUS Central Library",
-      "coordinates": { "lat": 1.2966, "lng": 103.7722 },
-      "image": {
-        "description": "The facade of the NUS Central Library, a key resource for students and researchers.",
-        "imageUrl": "https://images.unsplash.com/photo-1656849093674-937910978e7a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxsaWJyYXJ5JTIwYnVpbGRpbmd8ZW58MHx8fHwxNzYzOTAyOTg0fDA&ixlib=rb-4.1.0&q=80&w=1080",
-        "imageHint": "library building"
-      }
+      "id": "clb",
+      "name": "Central Library",
+      "coordinates": {
+        "lat": 1.296674,
+        "lng": 103.772539
+      },
+      "imageUrl": "https://images.unsplash.com/photo-1707109462204-d73bbc0a1575"
     },
     {
-      "id": "loc3",
-      "name": "School of Computing (COM3)",
-      "coordinates": { "lat": 1.2929, "lng": 103.7744 },
-      "image": {
-        "description": "The modern architecture of the School of Computing (COM3) building.",
-        "imageUrl": "https://images.unsplash.com/photo-1543071293-d91175a68672?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtb2Rlcm4lMjBhcmNoaXRlY3R1cmV8ZW58MHx8fHwxNzYzODcxMTk4fDA&ixlib=rb-4.1.0&q=80&w=1080",
-        "imageHint": "modern architecture"
-      }
+      "id": "deck",
+      "name": "The Deck",
+      "coordinates": {
+        "lat": 1.294651,
+        "lng": 103.772405
+      },
+      "imageUrl": "https://s3-media0.fl.yelpcdn.com/bphoto/IzFssmPgW_-nf-nTJ99o0g/l.jpg"
     },
     {
-      "id": "loc4",
-      "name": "Yusof Ishak House (YIH)",
-      "coordinates": { "lat": 1.2989, "lng": 103.7758 },
-      "image": {
-        "description": "Yusof Ishak House (YIH), a student activity hub on Kent Ridge Campus.",
-        "imageUrl": "https://images.unsplash.com/photo-1759164867699-ced5879ef3de?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzdHVkZW50JTIwY2VudGVyfGVufDB8fHx8MTc2MzkyNTY4NHww&ixlib=rb-4.1.0&q=80&w=1080",
-        "imageHint": "student center"
-      }
+      "id": "terrace",
+      "name": "The Terrace",
+      "coordinates": {
+        "lat": 1.294424,
+        "lng": 103.774247
+      },
+      "imageUrl": "https://sgmark.org/wp-content/uploads/winners/5532/file-entry-3.jpg"
     },
     {
-      "id": "loc5",
-      "name": "NUS Business School (Mochtar Riady Building)",
-      "coordinates": { "lat": 1.2931, "lng": 103.7738 },
-      "image": {
-        "description": "The Mochtar Riady Building, home to the NUS Business School.",
-        "imageUrl": "https://images.unsplash.com/photo-1585524487570-30debe69e5bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YnVzaW5lc3MlMjBzY2hvb2x8ZW58MHx8fHwxNzYzOTI1Njg0fDA&ixlib=rb-4.1.0&q=80&w=1080",
-        "imageHint": "business school"
-      }
+      "id": "lt13",
+      "name": "LT13",
+      "coordinates": {
+        "lat": 1.295130,
+        "lng": 103.770661
+      },
+      "imageUrl": "https://chs.nus.edu.sg/wp-content/uploads/2020/12/FASS-Building.png"
+    },
+    {
+      "id": "ea",
+      "name": "Engineering Auditorium",
+      "coordinates": {
+        "lat": 1.300678,
+        "lng": 103.770444
+      },
+      "imageUrl": "https://cde.nus.edu.sg/me/wp-content/uploads/sites/11/2021/10/2016-Faculty-of-Engineering-pic-_1_-1024x684.jpg"
+    },
+    {
+      "id": "biz",
+      "name": "BIZ2",
+      "coordinates": {
+        "lat": 1.292398,
+        "lng": 103.774065
+      },
+      "imageUrl": "https://images.unsplash.com/photo-1707109462458-47cd3ece5cf0"
+    },
+    {
+      "id": "lt27",
+      "name": "LT27",
+      "coordinates": {
+        "lat": 1.297508,
+        "lng": 103.780957
+      },
+      "imageUrl": "https://tse3.mm.bing.net/th/id/OIP.h5wGeRs9H1MWtlnmt1ekyAHaEK"
+    },
+    {
+      "id": "uhc",
+      "name": "University Health Centre",
+      "coordinates": {
+        "lat": 1.298911,
+        "lng": 103.776274
+      },
+      "imageUrl": "https://sws.comp.nus.edu.sg/images/uhc-1.jpg"
+    },
+    {
+      "id": "yih",
+      "name": "Yusof Ishak House",
+      "coordinates": {
+        "lat": 1.298982,
+        "lng": 103.775072
+      },
+      "imageUrl": "https://osa.nus.edu.sg/wp-content/uploads/2025/09/NUS_Yusof_Ishak_House_Finbarr_Fallon_03-scaled.jpg"
+    },
+    {
+      "id": "utownaudi2",
+      "name": "UTown Auditorium 2",
+      "coordinates": {
+        "lat": 1.304312,
+        "lng": 103.772540
+      },
+      "imageUrl": "https://images.unsplash.com/photo-1650215246980-a8b177cf541c"
+    },
+    {
+      "id": "utowngreen",
+      "name": "UTown Green",
+      "coordinates": {
+        "lat": 1.305236,
+        "lng": 103.773499
+      },
+      "imageUrl": "https://images.unsplash.com/photo-1637224320210-98b6d8790b45"
+    },
+    {
+      "id": "tembusu",
+      "name": "Tembusu College",
+      "coordinates": {
+        "lat": 1.306126,
+        "lng": 103.773963
+      },
+      "imageUrl": "https://nus.edu.sg/images/default-source/corporate/admissions/tembusu.jpg"
+    },
+    {
+      "id": "sbucksutown",
+      "name": "Starbucks at UTown",
+      "coordinates": {
+        "lat": 1.305514,
+        "lng": 103.773188
+      },
+      "imageUrl": "https://laptopfriendly.co/images/places/singapore/starbucks-university-town/starbucks-8-college-ave-west--other.jpg"
+    },
+    {
+      "id": "mpsh",
+      "name": "Multi-Purpose Sports Hall",
+      "coordinates": {
+        "lat": 1.300652,
+        "lng": 103.775791
+      },
+      "imageUrl": "https://www.streetdirectory.com/stock_images/travel/simg_show/12837553330113/247552/multi_purpose_sports_hall_mpsh1__sports__recreation_centre_national_university_of_singapore_nus"
+    },
+    {
+      "id": "music",
+      "name": "Yong Siew Toh Conservatory of Music",
+      "coordinates": {
+        "lat": 1.301745,
+        "lng": 103.773038
+      },
+      "imageUrl": "https://www.marinabaysands.com/content/dam/revamp/ASMrevamp/playing-the-exhibition-yst/YST-566x346.jpg"
+    },
+    {
+      "id": "sde",
+      "name": "SDE4",
+      "coordinates": {
+        "lat": 1.297382,
+        "lng": 103.770168
+      },
+      "imageUrl": "https://tse1.mm.bing.net/th/id/OIP.ESOy-w1oTzcl19oZm4KyBgHaF7"
     }
   ]
 }

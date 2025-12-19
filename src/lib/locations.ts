@@ -7,7 +7,7 @@ export type Location = {
     lat: number;
     lng: number;
   };
-  imageId: string;
+  imageUrl: string;
 };
 
 export const locations: Location[] = data.locations;
