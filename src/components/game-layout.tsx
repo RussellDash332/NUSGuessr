@@ -352,7 +352,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   // Scroll to top when a new round starts
   useEffect(() => {
     if (round > 1) { // Don't scroll on initial load
-      topOfGameRef.current?.scrollIntoView({ behavior: 'smooth' });
+      topOfGameRef.current?.scrollIntoView();
     }
   }, [round]);
 
