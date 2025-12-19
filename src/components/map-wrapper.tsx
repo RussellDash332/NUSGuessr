@@ -32,6 +32,7 @@ type MapWrapperProps = {
   guessPosition: LatLng | null;
   actualPosition: LatLng | null;
   onMapClick: (e: LeafletMouseEvent) => void;
+  onMapReady: () => void;
   isRevealed: boolean;
   isInteractive?: boolean;
 };
@@ -42,6 +43,7 @@ export function MapWrapper({
   guessPosition,
   actualPosition,
   onMapClick,
+  onMapReady,
   isRevealed,
   isInteractive = true,
 }: MapWrapperProps) {
@@ -66,11 +68,9 @@ export function MapWrapper({
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(mapRef.current);
       
-      if (mapRef.current) {
-        mapRef.current.doubleClickZoom.disable();
-      }
+      onMapReady();
     }
-  }, [center, zoom]);
+  }, [center, zoom, onMapReady]);
   
   useEffect(() => {
     const map = mapRef.current;
@@ -118,11 +118,14 @@ export function MapWrapper({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-  
+
+    // This effect runs when isRevealed changes.
+    // We check if it changed from true to false, which means a new round has started.
     if (prevIsRevealedRef.current && !isRevealed) {
       map.setView(center, zoom);
     }
   
+    // Update the ref for the next render.
     prevIsRevealedRef.current = isRevealed;
   }, [isRevealed, center, zoom]);
 

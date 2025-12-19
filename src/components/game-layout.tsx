@@ -292,7 +292,8 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   const [showImageInResults, setShowImageInResults] = useState(false);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [isRoundReady, setIsRoundReady] = useState(false);
+  const [isImageReady, setIsImageReady] = useState(false);
+  const [isMapReady, setIsMapReady] = useState(false);
   
   const [zoomLevel, setZoomLevel] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -309,6 +310,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   const { toast } = useToast();
 
   const totalRounds = gameLocations.length;
+  const isTimerRunning = startTime > 0;
   
   useImperativeHandle(ref, () => ({
     getCurrentState: () => ({
@@ -327,9 +329,6 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       return;
     }
     
-    const nextLocation = locations[roundNum - 1];
-    setCurrentLocation(nextLocation);
-    setObfuscatedImageUrl(nextLocation.imageUrl);
     setGuess(null);
     setGameState("guessing");
     setDistance(0);
@@ -337,11 +336,17 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     setShowImageInResults(false);
     setIsImageZoomed(false);
     setImageError(false);
-    setIsRoundReady(false);
+    setIsImageReady(false);
+    // isMapReady does not need to be reset as the map is always ready after initial load
     
     savedElapsedTimeRef.current = restoredElapsedTime;
     setElapsedTime(restoredElapsedTime);
     setStartTime(0);
+    
+    const nextLocation = locations[roundNum - 1];
+    setCurrentLocation(nextLocation);
+    setObfuscatedImageUrl(nextLocation.imageUrl);
+
   }, []);
 
   // Scroll to top when a new round starts
@@ -390,7 +395,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   // Master Timer Controller
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
-    if (gameState === 'guessing' && startTime > 0) {
+    if (isTimerRunning) {
         timer = setInterval(() => {
             const timeSinceStart = Date.now() - startTime;
             setElapsedTime(savedElapsedTimeRef.current + timeSinceStart);
@@ -401,7 +406,13 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
             clearInterval(timer);
         }
     };
-  }, [gameState, startTime]);
+  }, [isTimerRunning, startTime]);
+
+  useEffect(() => {
+    if (isImageReady && isMapReady && gameState === 'guessing' && startTime === 0) {
+      setStartTime(Date.now());
+    }
+  }, [isImageReady, isMapReady, gameState, startTime]);
 
 
   // Save progress on tab/browser close for daily challenge
@@ -597,12 +608,15 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
 
   const handleImageError = useCallback(() => {
     setImageError(true);
-    setIsRoundReady(true);
+    setIsImageReady(true); // Still consider "ready" to start timer, even if image failed
   }, []);
 
   const handleImageLoad = useCallback(() => {
-    setIsRoundReady(true);
-    setStartTime(Date.now());
+    setIsImageReady(true);
+  }, []);
+  
+  const handleMapReady = useCallback(() => {
+    setIsMapReady(true);
   }, []);
 
   const ResultsCard = () => (
@@ -688,7 +702,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
                 totalRounds={totalRounds}
                 totalScore={totalScore}
             >
-                {isRoundReady && <TimerDisplay elapsedTime={elapsedTime} />}
+                {isTimerRunning && <TimerDisplay elapsedTime={elapsedTime} />}
             </GuessImage>
           ) : (
             showImageInResults ? (
@@ -713,6 +727,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
               guessPosition={guess}
               actualPosition={actualPosition}
               onMapClick={handleMapClick}
+              onMapReady={handleMapReady}
               isRevealed={gameState === 'revealed'}
               isInteractive={!isGameOver}
             />
@@ -721,7 +736,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
             {gameState === 'guessing' ? 'Click on the map to place your guess.' : 'Here are the results for this round.'}
           </p>
           {gameState === 'guessing' ? (
-            <Button onClick={handleGuess} disabled={!guess || !isRoundReady} size="lg">
+            <Button onClick={handleGuess} disabled={!guess || !isTimerRunning} size="lg">
               <MapPin className="mr-2 h-5 w-5" />
               Make Guess
             </Button>
