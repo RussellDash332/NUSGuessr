@@ -36,7 +36,9 @@ jobs:
       - name: Create Game Data File
         run: |
           mkdir -p src/lib
-          echo "${{ secrets.GAME_DATA_JSON }}" > src/lib/game-data.json
+          cat <<'EOF' > src/lib/game-data.json
+          ${{ secrets.GAME_DATA_JSON }}
+          EOF
       - name: Install dependencies
         run: npm install
       - name: Build with Next.js
