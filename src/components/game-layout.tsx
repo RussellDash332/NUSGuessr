@@ -299,6 +299,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   const lastPanPosition = useRef({ x: 0, y: 0 });
   const zoomContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
+  const topOfGameRef = useRef<HTMLDivElement>(null);
 
   const [startTime, setStartTime] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
@@ -324,6 +325,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       }
       return;
     }
+    topOfGameRef.current?.scrollIntoView({ behavior: 'smooth' });
 
     const nextLocation = locations[roundNum - 1];
     setCurrentLocation(nextLocation);
@@ -662,7 +664,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   };
 
   return (
-    <div className="h-full w-full relative">
+    <div ref={topOfGameRef} className="h-full w-full relative">
        <div className={cn(
         "h-full w-full grid md:grid-cols-2 space-y-2 md:gap-x-8 px-4 md:p-8 max-w-7xl mx-auto",
         isImageZoomed ? 'overflow-hidden' : ''
