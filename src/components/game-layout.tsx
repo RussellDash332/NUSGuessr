@@ -44,7 +44,7 @@ type SavedProgress = {
     round: number;
     totalScore: number;
     roundScores: Omit<RoundScore, 'locationName'>[];
-    elapsedTime: number; // Store elapsed time instead of startTime
+    elapsedTime: number;
 }
 
 const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => mod.MapWrapper), {
@@ -127,9 +127,6 @@ interface ImageCardProps {
   openZoomView: () => void;
   setShowImageInResults?: (show: boolean) => void;
   gameState: GameState;
-  round: number;
-  totalRounds: number;
-  totalScore: number;
   onImageError: () => void;
   imageError: boolean;
 }
@@ -139,9 +136,6 @@ const ImageCard = React.memo(function ImageCard({
   openZoomView,
   setShowImageInResults,
   gameState,
-  round,
-  totalRounds,
-  totalScore,
   onImageError,
   imageError,
 }: ImageCardProps) {
@@ -151,11 +145,6 @@ const ImageCard = React.memo(function ImageCard({
         <CardTitle className="font-headline text-2xl">
           Where is this?
         </CardTitle>
-        {gameState === 'guessing' && (
-           <CardDescription>
-              Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
-           </CardDescription>
-        )}
       </CardHeader>
       <ScrollArea className="flex-grow">
         <CardContent>
@@ -318,7 +307,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
 
     const nextLocation = locations[roundNum - 1];
     setCurrentLocation(nextLocation);
-    setObfuscatedImageUrl(null);
+    setObfuscatedImageUrl(nextLocation.imageUrl);
     setGuess(null);
     setGameState("guessing");
     setDistance(0);
@@ -353,17 +342,8 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       setRoundScores([]);
       startNewRound(1, selectedLocations, 0);
     }
-  }, [gameMode, startNewRound]);
-  
-  // Advance to next round
-  useEffect(() => {
-    if (round > 1 && gameLocations.length > 0 && round <= gameLocations.length) {
-        const isInitialSavedLoad = savedProgress && round === savedProgress.round && elapsedTime === savedProgress.elapsedTime;
-        if (!isInitialSavedLoad) {
-            startNewRound(round, gameLocations);
-        }
-    }
-  }, [round, gameLocations, startNewRound, savedProgress, elapsedTime]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameMode]);
 
 
   useEffect(() => {
@@ -419,31 +399,6 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
         window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [gameMode, gameState, isGameOver, round, totalScore, roundScores, elapsedTime]);
-  
-  useEffect(() => {
-    if (currentLocation?.imageUrl) {
-      let isCancelled = false;
-      
-      const fetchAndEncode = async () => {
-        try {
-          if (!isCancelled) {
-            setObfuscatedImageUrl(currentLocation.imageUrl);
-          }
-        } catch (error) {
-          console.error("Error with image URL:", error);
-          if (!isCancelled) {
-            setObfuscatedImageUrl(currentLocation.imageUrl);
-          }
-        }
-      };
-
-      fetchAndEncode();
-
-      return () => {
-        isCancelled = true;
-      };
-    }
-  }, [currentLocation]);
 
   const handleMapClick = useCallback((e: LeafletMouseEvent) => {
     if (gameState === "guessing") {
@@ -495,8 +450,10 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   };
 
   const handleNextRound = () => {
-    if (round < totalRounds) {
-      setRound(prev => prev + 1);
+    const nextRound = round + 1;
+    if (nextRound <= totalRounds) {
+      setRound(nextRound);
+      startNewRound(nextRound, gameLocations);
     } else {
       setIsGameOver(true);
     }
@@ -656,10 +613,6 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     return { ...rs, locationName };
   });
 
-  const handleExitWithState = () => {
-    onExit(gameMode, { round, totalScore, roundScores, elapsedTime });
-  }
-
   return (
     <div className="h-full w-full relative">
        <div className={cn(
@@ -685,9 +638,6 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
                 openZoomView={openZoomView}
                 setShowImageInResults={setShowImageInResults}
                 gameState={gameState}
-                round={round}
-                totalRounds={totalRounds}
-                totalScore={totalScore}
                 onImageError={() => setImageError(true)}
                 imageError={imageError}
               />
@@ -746,7 +696,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
           >
             <div
               ref={imageRef}
-              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})` }}
+              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`, objectFit: 'cover' }}
               className="will-change-transform"
             >
               {imageError ? (
