@@ -52,6 +52,54 @@ const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => 
   loading: () => <div className="flex h-full w-full items-center justify-center bg-muted rounded-lg"><p>Loading Map...</p></div>,
 });
 
+
+const GuessImage = React.memo(function GuessImage({
+    obfuscatedImageUrl,
+    imageError,
+    onImageError,
+    openZoomView
+}: {
+    obfuscatedImageUrl: string;
+    imageError: boolean;
+    onImageError: () => void;
+    openZoomView: () => void;
+}) {
+    return (
+        <ScrollArea className="flex-grow">
+            <CardContent>
+                <div
+                    className="group relative aspect-[3/2] w-full overflow-hidden rounded-lg"
+                    onClick={!imageError ? openZoomView : undefined}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onDragStart={(e) => e.preventDefault()}
+                >
+                    {imageError ? (
+                        <div className="absolute inset-0 bg-muted text-muted-foreground flex flex-col items-center justify-center text-center p-4">
+                            <ImageOff className="h-10 w-10 mb-2" />
+                            <span>Image not available at the moment :(</span>
+                        </div>
+                    ) : (
+                        <>
+                            <Image
+                                src={obfuscatedImageUrl}
+                                alt="Location to guess"
+                                fill
+                                priority
+                                className="object-cover pointer-events-none"
+                                onError={onImageError}
+                            />
+                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                <ZoomIn className="h-12 w-12 text-white" />
+                            </div>
+                        </>
+                    )}
+                </div>
+            </CardContent>
+        </ScrollArea>
+    );
+});
+
+
 interface ImageCardProps {
   obfuscatedImageUrl: string;
   openZoomView: () => void;
@@ -182,7 +230,7 @@ const generateGameLocations = (mode: GameMode, allLocs: Location[]): Location[] 
 
 interface GameLayoutProps {
     gameMode: GameMode;
-    onExit: (modeCompleted?: GameMode, round?: number, totalScore?: number, roundScores?: RoundScore[], elapsedTime?: number) => void;
+    onExit: (modeCompleted?: GameMode, state?: { round: number, totalScore: number, roundScores: RoundScore[], elapsedTime: number }) => void;
     savedProgress: SavedProgress | null;
 }
 
@@ -227,16 +275,14 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
 
   const { toast } = useToast();
   
-  const totalRounds = gameLocations.length;
-
-    useImperativeHandle(ref, () => ({
-        getCurrentState: () => ({
-            round,
-            totalScore,
-            roundScores,
-            elapsedTime,
-        }),
-    }));
+  useImperativeHandle(ref, () => ({
+    getCurrentState: () => ({
+        round,
+        totalScore,
+        roundScores,
+        elapsedTime,
+    }),
+  }));
 
   const startNewRound = useCallback((roundNum: number, locations: Location[], restoredElapsedTime: number = 0) => {
     if (roundNum > locations.length || locations.length === 0) {
@@ -288,12 +334,12 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   // Advance to next round
   useEffect(() => {
     if (round > 1 && gameLocations.length > 0 && round <= gameLocations.length) {
-        const isInitialSavedLoad = savedProgress && round === savedProgress.round;
+        const isInitialSavedLoad = savedProgress && round === savedProgress.round && elapsedTime === savedProgress.elapsedTime;
         if (!isInitialSavedLoad) {
             startNewRound(round, gameLocations);
         }
     }
-  }, [round, gameLocations, startNewRound, savedProgress]);
+  }, [round, gameLocations, startNewRound, savedProgress, elapsedTime]);
 
 
   useEffect(() => {
@@ -432,10 +478,6 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       setIsGameOver(true);
     }
   };
-
-  const handleEndGame = () => {
-    onExit();
-  }
 
   const handleCopyResults = () => {
     const today = new Date();
@@ -591,6 +633,10 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     return { ...rs, locationName };
   });
 
+  const handleExitWithState = () => {
+    onExit(gameMode, { round, totalScore, roundScores, elapsedTime });
+  }
+
   return (
     <div className="h-full w-full relative">
        <div className={cn(
@@ -600,49 +646,24 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
         <div className="flex flex-col gap-4 md:min-h-[450px]">
           {gameState === 'guessing' ? (
             <Card className="flex flex-col h-full">
-              <CardHeader>
-                <CardTitle className="font-headline text-2xl">Where is this?</CardTitle>
-                <div className="flex justify-between items-center">
-                    <CardDescription>
-                        Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
-                    </CardDescription>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="mr-1 h-4 w-4" />
-                        <span>{(elapsedTime / 1000).toFixed(1)}s</span>
-                    </div>
-                </div>
-              </CardHeader>
-              <ScrollArea className="flex-grow">
-                <CardContent>
-                    <div 
-                      className="group relative aspect-[3/2] w-full overflow-hidden rounded-lg"
-                      onClick={!imageError ? openZoomView : undefined}
-                      onContextMenu={(e) => e.preventDefault()}
-                      onDragStart={(e) => e.preventDefault()}
-                    >
-                      {imageError ? (
-                        <div className="absolute inset-0 bg-muted text-muted-foreground flex flex-col items-center justify-center text-center p-4">
-                          <ImageOff className="h-10 w-10 mb-2" />
-                          <span>Image not available at the moment :(</span>
+                <CardHeader>
+                    <CardTitle className="font-headline text-2xl">Where is this?</CardTitle>
+                    <div className="flex justify-between items-center">
+                        <CardDescription>
+                            Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
+                        </CardDescription>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                            <Clock className="mr-1 h-4 w-4" />
+                            <span>{(elapsedTime / 1000).toFixed(1)}s</span>
                         </div>
-                      ) : (
-                        <>
-                          <Image
-                            src={obfuscatedImageUrl}
-                            alt="Location to guess"
-                            fill
-                            priority
-                            className="object-cover pointer-events-none"
-                            onError={() => setImageError(true)}
-                          />
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                            <ZoomIn className="h-12 w-12 text-white" />
-                          </div>
-                        </>
-                      )}
                     </div>
-                </CardContent>
-              </ScrollArea>
+                </CardHeader>
+                <GuessImage
+                    obfuscatedImageUrl={obfuscatedImageUrl}
+                    imageError={imageError}
+                    onImageError={() => setImageError(true)}
+                    openZoomView={openZoomView}
+                />
             </Card>
           ) : (
             showImageInResults ? (
