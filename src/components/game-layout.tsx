@@ -40,7 +40,7 @@ type RoundScore = {
   locationName: string;
 };
 
-type SavedProgress = {
+export type SavedProgress = {
     round: number;
     totalScore: number;
     roundScores: Omit<RoundScore, 'locationName'>[];
@@ -53,6 +53,14 @@ const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => 
 });
 
 
+const TimerDisplay = ({ elapsedTime }: { elapsedTime: number }) => (
+    <div className="flex items-center text-sm text-muted-foreground">
+        <Clock className="mr-1 h-4 w-4" />
+        <span>{(elapsedTime / 1000).toFixed(1)}s</span>
+    </div>
+);
+
+
 const GuessImage = React.memo(function GuessImage({
     obfuscatedImageUrl,
     imageError,
@@ -61,7 +69,7 @@ const GuessImage = React.memo(function GuessImage({
     round,
     totalRounds,
     totalScore,
-    elapsedTime
+    children
 }: {
     obfuscatedImageUrl: string;
     imageError: boolean;
@@ -70,7 +78,7 @@ const GuessImage = React.memo(function GuessImage({
     round: number;
     totalRounds: number;
     totalScore: number;
-    elapsedTime: number;
+    children: React.ReactNode;
 }) {
     return (
         <Card className="flex flex-col h-full">
@@ -80,10 +88,7 @@ const GuessImage = React.memo(function GuessImage({
                     <CardDescription>
                         Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
                     </CardDescription>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="mr-1 h-4 w-4" />
-                        <span>{(elapsedTime / 1000).toFixed(1)}s</span>
-                    </div>
+                    {children}
                 </div>
             </CardHeader>
             <ScrollArea className="flex-grow">
@@ -241,7 +246,7 @@ const generateGameLocations = (mode: GameMode, allLocs: Location[]): Location[] 
 
 interface GameLayoutProps {
     gameMode: GameMode;
-    onExit: (modeCompleted?: GameMode, state?: { round: number, totalScore: number, roundScores: RoundScore[], elapsedTime: number }) => void;
+    onExit: (modeCompleted?: GameMode, state?: SavedProgress) => void;
     savedProgress: SavedProgress | null;
 }
 
@@ -558,6 +563,10 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     setPan(prev => clampPan(prev.x, prev.y, zoomLevel));
   }, [zoomLevel, clampPan]);
 
+  const handleImageError = useCallback(() => {
+    setImageError(true);
+  }, []);
+
   const ResultsCard = () => (
     <Card className="animate-in fade-in-50 flex flex-col">
       <CardHeader>
@@ -624,13 +633,14 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
              <GuessImage
                 obfuscatedImageUrl={obfuscatedImageUrl}
                 imageError={imageError}
-                onImageError={() => setImageError(true)}
+                onImageError={handleImageError}
                 openZoomView={openZoomView}
                 round={round}
                 totalRounds={totalRounds}
                 totalScore={totalScore}
-                elapsedTime={elapsedTime}
-            />
+            >
+                <TimerDisplay elapsedTime={elapsedTime} />
+            </GuessImage>
           ) : (
             showImageInResults ? (
               <ImageCard 
@@ -638,7 +648,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
                 openZoomView={openZoomView}
                 setShowImageInResults={setShowImageInResults}
                 gameState={gameState}
-                onImageError={() => setImageError(true)}
+                onImageError={handleImageError}
                 imageError={imageError}
               />
             ) : <ResultsCard />
@@ -711,7 +721,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
                   width={1920}
                   height={1080}
                   className="w-auto h-auto max-w-[90vw] max-h-[80vh] object-cover pointer-events-none"
-                  onError={() => setImageError(true)}
+                  onError={handleImageError}
                 />
               )}
             </div>
