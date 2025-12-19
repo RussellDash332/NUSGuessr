@@ -73,6 +73,7 @@ const TimerDisplay = memo(function TimerDisplay({ elapsedTime }: { elapsedTime: 
 const GuessImage = memo(function GuessImage({
     obfuscatedImageUrl,
     imageError,
+    onImageLoad,
     onImageError,
     openZoomView,
     round,
@@ -82,6 +83,7 @@ const GuessImage = memo(function GuessImage({
 }: {
     obfuscatedImageUrl: string;
     imageError: boolean;
+    onImageLoad: () => void;
     onImageError: () => void;
     openZoomView: () => void;
     round: number;
@@ -121,6 +123,7 @@ const GuessImage = memo(function GuessImage({
                                     fill
                                     priority
                                     className="object-cover pointer-events-none"
+                                    onLoad={onImageLoad}
                                     onError={onImageError}
                                 />
                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
@@ -288,6 +291,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   const [showImageInResults, setShowImageInResults] = useState(false);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isRoundReady, setIsRoundReady] = useState(false);
   
   const [zoomLevel, setZoomLevel] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -331,10 +335,11 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     setShowImageInResults(false);
     setIsImageZoomed(false);
     setImageError(false);
+    setIsRoundReady(false);
     
     savedElapsedTimeRef.current = restoredElapsedTime;
     setElapsedTime(restoredElapsedTime);
-    setStartTime(Date.now());
+    setStartTime(0);
   }, []);
 
   // Initialize game
@@ -444,6 +449,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     setTotalScore(newTotalScore);
     setRoundScores(newRoundScores);
     setShowImageInResults(false);
+    setStartTime(0);
 
     if (gameMode === 'daily') {
         const isGameFinished = round >= totalRounds;
@@ -582,6 +588,12 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
 
   const handleImageError = useCallback(() => {
     setImageError(true);
+    setIsRoundReady(true);
+  }, []);
+
+  const handleImageLoad = useCallback(() => {
+    setIsRoundReady(true);
+    setStartTime(Date.now());
   }, []);
 
   const ResultsCard = () => (
@@ -653,20 +665,21 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     <div className="h-full w-full relative">
        <div className={cn(
         "h-full w-full grid md:grid-cols-2 space-y-2 md:gap-x-8 px-4 md:p-8 max-w-7xl mx-auto",
-        isImageZoomed ? 'overflow-hidden' : 'overflow-y-auto'
+        isImageZoomed ? 'overflow-hidden' : ''
       )}>
         <div className="flex flex-col gap-4 md:min-h-[450px]">
           {gameState === 'guessing' ? (
              <GuessImage
                 obfuscatedImageUrl={obfuscatedImageUrl}
                 imageError={imageError}
+                onImageLoad={handleImageLoad}
                 onImageError={handleImageError}
                 openZoomView={openZoomView}
                 round={round}
                 totalRounds={totalRounds}
                 totalScore={totalScore}
             >
-                <TimerDisplay elapsedTime={elapsedTime} />
+                {isRoundReady && <TimerDisplay elapsedTime={elapsedTime} />}
             </GuessImage>
           ) : (
             showImageInResults ? (
@@ -685,7 +698,6 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
         <div className="flex flex-col gap-4">
           <div className="h-[60vh] md:h-full w-full rounded-lg bg-muted">
             <MapWrapper
-              key={round}
               center={mapCenter}
               zoom={15}
               guessPosition={guess}
@@ -699,7 +711,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
             {gameState === 'guessing' ? 'Click on the map to place your guess.' : 'Here are the results for this round.'}
           </p>
           {gameState === 'guessing' ? (
-            <Button onClick={handleGuess} disabled={!guess} size="lg">
+            <Button onClick={handleGuess} disabled={!guess || !isRoundReady} size="lg">
               <MapPin className="mr-2 h-5 w-5" />
               Make Guess
             </Button>

@@ -57,7 +57,7 @@ export function MapWrapper({
       mapRef.current = L.map(mapContainerRef.current, {
         center: center,
         zoom: zoom,
-        doubleClickZoom: false,
+        doubleClickZoom: false
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -73,22 +73,22 @@ export function MapWrapper({
     if (isInteractive) {
       map.dragging.enable();
       map.touchZoom.enable();
-      map.doubleClickZoom.enable();
       map.scrollWheelZoom.enable();
       map.boxZoom.enable();
       map.keyboard.enable();
       if (map.tap) map.tap.enable();
+      map.doubleClickZoom.disable();
       if (mapContainerRef.current) {
         mapContainerRef.current.style.cursor = 'grab';
       }
     } else {
       map.dragging.disable();
       map.touchZoom.disable();
-      map.doubleClickZoom.disable();
       map.scrollWheelZoom.disable();
       map.boxZoom.disable();
       map.keyboard.disable();
       if (map.tap) map.tap.disable();
+      map.doubleClickZoom.disable();
       if (mapContainerRef.current) {
         mapContainerRef.current.style.cursor = 'default';
       }

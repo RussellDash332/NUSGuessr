@@ -35,9 +35,7 @@ const getTodayDateString = () => {
 };
 
 const formatDate = (date: Date): string => {
-    const day = date.getDate();
-    const month = date.toLocaleString('default', { month: 'long' });
-    const year = date.getFullYear();
+    // Use UTC methods to avoid timezone issues when creating the string
     const dateObj = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     return `${dateObj.getUTCDate()} ${dateObj.toLocaleString('default', { month: 'long' })} ${dateObj.getUTCFullYear()}`;
 };
@@ -231,7 +229,10 @@ export default function Home() {
     if (!dailyResults) return;
 
     const { totalScore, roundScores, date } = dailyResults;
-    const dateString = formatDate(new Date(date));
+    const dateObj = new Date(date);
+    // Add timezone offset to get correct UTC date
+    const correctedDate = new Date(dateObj.getTime() + dateObj.getTimezoneOffset() * 60000);
+    const dateString = formatDate(correctedDate);
     const title = `NUSGuessr Daily - ${dateString} - Final Score: ${totalScore.toLocaleString()}`;
     
     const summary = roundScores.map(
@@ -337,7 +338,7 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="text-center p-4 border-t text-sm text-muted-foreground shrink-0 z-10 bg-background">
+      <footer className="text-center p-4 border-t text-sm text-muted-foreground shrink-0 bg-background z-10">
         <p>Challenge your knowledge of the National University of Singapore campus!</p>
         <p className="text-xs mt-1">
           <a
