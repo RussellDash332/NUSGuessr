@@ -182,7 +182,7 @@ const generateGameLocations = (mode: GameMode, allLocs: Location[]): Location[] 
 
 interface GameLayoutProps {
     gameMode: GameMode;
-    onExit: (modeCompleted?: GameMode) => void;
+    onExit: (modeCompleted?: GameMode, round?: number, totalScore?: number, roundScores?: RoundScore[], elapsedTime?: number) => void;
     savedProgress: SavedProgress | null;
 }
 
@@ -288,7 +288,6 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   // Advance to next round
   useEffect(() => {
     if (round > 1 && gameLocations.length > 0 && round <= gameLocations.length) {
-        // Check if we are not in an initial load from saved progress
         const isInitialSavedLoad = savedProgress && round === savedProgress.round;
         if (!isInitialSavedLoad) {
             startNewRound(round, gameLocations);
@@ -310,15 +309,14 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   
   // Master Timer Controller
   useEffect(() => {
-    let timer: number | null = null;
+    let timer: NodeJS.Timeout | null = null;
     if (gameState === 'guessing' && startTime > 0) {
-      timer = window.setInterval(() => {
+      timer = setInterval(() => {
         const timeSinceStart = Date.now() - startTime;
         setElapsedTime(savedElapsedTimeRef.current + timeSinceStart);
       }, 100);
     }
 
-    // Cleanup function to clear interval
     return () => {
       if (timer) {
         clearInterval(timer);
@@ -728,7 +726,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
                   alt="Zoomed location"
                   width={1920}
                   height={1080}
-                  className="w-full h-auto max-w-[90vw] max-h-[80vh] object-contain pointer-events-none"
+                  className="w-auto h-auto max-w-[90vw] max-h-[80vh] object-cover pointer-events-none"
                   onError={() => setImageError(true)}
                 />
               )}
