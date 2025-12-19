@@ -57,45 +57,67 @@ const GuessImage = React.memo(function GuessImage({
     obfuscatedImageUrl,
     imageError,
     onImageError,
-    openZoomView
+    openZoomView,
+    round,
+    totalRounds,
+    totalScore,
+    elapsedTime
 }: {
     obfuscatedImageUrl: string;
     imageError: boolean;
     onImageError: () => void;
     openZoomView: () => void;
+    round: number;
+    totalRounds: number;
+    totalScore: number;
+    elapsedTime: number;
 }) {
     return (
-        <ScrollArea className="flex-grow">
-            <CardContent>
-                <div
-                    className="group relative aspect-[3/2] w-full overflow-hidden rounded-lg"
-                    onClick={!imageError ? openZoomView : undefined}
-                    onContextMenu={(e) => e.preventDefault()}
-                    onDragStart={(e) => e.preventDefault()}
-                >
-                    {imageError ? (
-                        <div className="absolute inset-0 bg-muted text-muted-foreground flex flex-col items-center justify-center text-center p-4">
-                            <ImageOff className="h-10 w-10 mb-2" />
-                            <span>Image not available at the moment :(</span>
-                        </div>
-                    ) : (
-                        <>
-                            <Image
-                                src={obfuscatedImageUrl}
-                                alt="Location to guess"
-                                fill
-                                priority
-                                className="object-cover pointer-events-none"
-                                onError={onImageError}
-                            />
-                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                <ZoomIn className="h-12 w-12 text-white" />
-                            </div>
-                        </>
-                    )}
+        <Card className="flex flex-col h-full">
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl">Where is this?</CardTitle>
+                <div className="flex justify-between items-center">
+                    <CardDescription>
+                        Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
+                    </CardDescription>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="mr-1 h-4 w-4" />
+                        <span>{(elapsedTime / 1000).toFixed(1)}s</span>
+                    </div>
                 </div>
-            </CardContent>
-        </ScrollArea>
+            </CardHeader>
+            <ScrollArea className="flex-grow">
+                <CardContent>
+                    <div
+                        className="group relative aspect-[3/2] w-full overflow-hidden rounded-lg"
+                        onClick={!imageError ? openZoomView : undefined}
+                        onContextMenu={(e) => e.preventDefault()}
+                        onDragStart={(e) => e.preventDefault()}
+                    >
+                        {imageError ? (
+                            <div className="absolute inset-0 bg-muted text-muted-foreground flex flex-col items-center justify-center text-center p-4">
+                                <ImageOff className="h-10 w-10 mb-2" />
+                                <span>Image not available at the moment :(</span>
+                            </div>
+                        ) : (
+                            <>
+                                <Image
+                                    src={obfuscatedImageUrl}
+                                    alt="Location to guess"
+                                    fill
+                                    priority
+                                    className="object-cover pointer-events-none"
+                                    onError={onImageError}
+                                />
+                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                    <ZoomIn className="h-12 w-12 text-white" />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </CardContent>
+            </ScrollArea>
+        </Card>
     );
 });
 
@@ -274,6 +296,8 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   const savedElapsedTimeRef = useRef<number>(0);
 
   const { toast } = useToast();
+
+  const totalRounds = gameLocations.length;
   
   useImperativeHandle(ref, () => ({
     getCurrentState: () => ({
@@ -329,7 +353,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       setRoundScores([]);
       startNewRound(1, selectedLocations, 0);
     }
-  }, [gameMode, savedProgress, startNewRound]);
+  }, [gameMode, startNewRound]);
   
   // Advance to next round
   useEffect(() => {
@@ -357,16 +381,15 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
     if (gameState === 'guessing' && startTime > 0) {
-      timer = setInterval(() => {
-        const timeSinceStart = Date.now() - startTime;
-        setElapsedTime(savedElapsedTimeRef.current + timeSinceStart);
-      }, 100);
+        timer = setInterval(() => {
+            const timeSinceStart = Date.now() - startTime;
+            setElapsedTime(savedElapsedTimeRef.current + timeSinceStart);
+        }, 100);
     }
-
     return () => {
-      if (timer) {
-        clearInterval(timer);
-      }
+        if (timer) {
+            clearInterval(timer);
+        }
     };
   }, [gameState, startTime]);
 
@@ -645,26 +668,16 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       )}>
         <div className="flex flex-col gap-4 md:min-h-[450px]">
           {gameState === 'guessing' ? (
-            <Card className="flex flex-col h-full">
-                <CardHeader>
-                    <CardTitle className="font-headline text-2xl">Where is this?</CardTitle>
-                    <div className="flex justify-between items-center">
-                        <CardDescription>
-                            Round {round} / {totalRounds} | Total Score: {totalScore.toLocaleString()}
-                        </CardDescription>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                            <Clock className="mr-1 h-4 w-4" />
-                            <span>{(elapsedTime / 1000).toFixed(1)}s</span>
-                        </div>
-                    </div>
-                </CardHeader>
-                <GuessImage
-                    obfuscatedImageUrl={obfuscatedImageUrl}
-                    imageError={imageError}
-                    onImageError={() => setImageError(true)}
-                    openZoomView={openZoomView}
-                />
-            </Card>
+             <GuessImage
+                obfuscatedImageUrl={obfuscatedImageUrl}
+                imageError={imageError}
+                onImageError={() => setImageError(true)}
+                openZoomView={openZoomView}
+                round={round}
+                totalRounds={totalRounds}
+                totalScore={totalScore}
+                elapsedTime={elapsedTime}
+            />
           ) : (
             showImageInResults ? (
               <ImageCard 
