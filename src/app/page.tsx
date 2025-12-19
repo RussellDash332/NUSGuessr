@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo, useRef } from "react";
 import { GameLayout } from "@/components/game-layout";
 import { NUSLogo } from "@/components/nus-logo";
 import { Button } from "@/components/ui/button";
@@ -37,8 +37,15 @@ type DailyProgress = {
     round: number;
     totalScore: number;
     roundScores: any[];
-    startTime?: number;
+    elapsedTime: number; // Changed from startTime
 };
+
+type GameStateForSave = {
+    round: number;
+    totalScore: number;
+    roundScores: any[];
+    elapsedTime: number;
+}
 
 const HeaderContent = memo(function HeaderContent({ gameMode, onReturnToLanding }: { gameMode: GameMode | null, onReturnToLanding: () => void}) {
   return (
@@ -72,6 +79,8 @@ export default function Home() {
   const [dailyProgress, setDailyProgress] = useState<DailyProgress | null>(null);
   const [countdown, setCountdown] = useState("");
   const { toast } = useToast();
+  const gameLayoutRef = useRef<{ getCurrentState: () => GameStateForSave }>(null);
+
 
   const checkDailyStatus = () => {
     const today = getTodayDateString();
@@ -177,6 +186,19 @@ export default function Home() {
   }
 
   const handleConfirmExit = () => {
+    if (gameMode === 'daily' && gameLayoutRef.current) {
+        const currentState = gameLayoutRef.current.getCurrentState();
+        const progressToSave = {
+            date: getTodayDateString(),
+            data: {
+                round: currentState.round,
+                totalScore: currentState.totalScore,
+                roundScores: currentState.roundScores.map(({ score, time }) => ({ score, time })),
+                elapsedTime: currentState.elapsedTime,
+            }
+        };
+        localStorage.setItem('nusguessr_daily_progress', JSON.stringify(progressToSave));
+    }
     setGameMode(null);
     setIsConfirmingExit(false);
     checkDailyStatus();
@@ -250,6 +272,7 @@ export default function Home() {
           </div>
         ) : (
           <GameLayout 
+            ref={gameLayoutRef}
             gameMode={gameMode} 
             onExit={handleExitGame} 
             savedProgress={gameMode === 'daily' ? dailyProgress : null}
@@ -299,7 +322,7 @@ export default function Home() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {gameMode === 'daily'
-                ? 'Your progress is saved. You can resume the Daily Challenge later.'
+                ? 'Your progress will be saved. You can resume the Daily Challenge later.'
                 : 'Your current progress in this practice round will be lost.'}
             </AlertDialogDescription>
           </AlertDialogHeader>

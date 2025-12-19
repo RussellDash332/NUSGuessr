@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import Image from "next/image";
 import dynamic from 'next/dynamic';
 import { locations as allLocations, type Location } from "@/lib/locations";
@@ -37,14 +37,14 @@ type GameMode = "daily" | "practice";
 type RoundScore = {
   score: number;
   time: number;
+  locationName: string;
 };
 
-// locationName is removed for security
 type SavedProgress = {
     round: number;
     totalScore: number;
     roundScores: Omit<RoundScore, 'locationName'>[];
-    startTime?: number; // Add startTime to saved progress
+    elapsedTime: number; // Store elapsed time instead of startTime
 }
 
 const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => mod.MapWrapper), {
@@ -198,7 +198,7 @@ const getTodayDateString = () => {
     return today.toISOString().split('T')[0];
 };
 
-export function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps) {
+export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps, ref) {
   const [gameLocations, setGameLocations] = useState<Location[]>([]);
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [obfuscatedImageUrl, setObfuscatedImageUrl] = useState<string | null>(null);
@@ -223,21 +223,30 @@ export function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps)
 
   const [startTime, setStartTime] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
-  const timerRef = useRef<number | null>(null);
+  const savedElapsedTimeRef = useRef<number>(0);
 
   const { toast } = useToast();
   
   const totalRounds = gameLocations.length;
 
-  const startNewRound = useCallback((restoredStartTime?: number) => {
-    if (round > gameLocations.length || gameLocations.length === 0) {
-      if (gameLocations.length > 0) {
+    useImperativeHandle(ref, () => ({
+        getCurrentState: () => ({
+            round,
+            totalScore,
+            roundScores,
+            elapsedTime,
+        }),
+    }));
+
+  const startNewRound = useCallback((roundNum: number, locations: Location[], restoredElapsedTime: number = 0) => {
+    if (roundNum > locations.length || locations.length === 0) {
+      if (locations.length > 0) {
         setIsGameOver(true);
       }
       return;
     }
 
-    const nextLocation = gameLocations[round - 1];
+    const nextLocation = locations[roundNum - 1];
     setCurrentLocation(nextLocation);
     setObfuscatedImageUrl(null);
     setGuess(null);
@@ -248,57 +257,44 @@ export function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps)
     setIsImageZoomed(false);
     setImageError(false);
     
-    const newStartTime = restoredStartTime || Date.now();
-    setStartTime(newStartTime);
-    setElapsedTime(restoredStartTime ? Date.now() - restoredStartTime : 0);
+    savedElapsedTimeRef.current = restoredElapsedTime;
+    setElapsedTime(restoredElapsedTime);
+    setStartTime(Date.now());
+  }, []);
 
-    if (gameMode === 'daily') {
-        const progress = {
-            date: getTodayDateString(),
-            data: {
-                round: round,
-                totalScore: totalScore,
-                roundScores: roundScores.map(({ score, time }) => ({ score, time })),
-                startTime: newStartTime,
-            }
-        };
-        localStorage.setItem('nusguessr_daily_progress', JSON.stringify(progress));
-    }
-
-  }, [round, gameLocations, gameMode, totalScore, roundScores]);
-
-  // Initialize game based on mode
+  // Initialize game
   useEffect(() => {
     const selectedLocations = generateGameLocations(gameMode, allLocations);
     setGameLocations(selectedLocations);
-    
-    if (savedProgress) {
-        setRound(savedProgress.round);
-        setTotalScore(savedProgress.totalScore);
-        // We don't have locationName here, but we will add it back in the game over screen
-        setRoundScores(savedProgress.roundScores.map(rs => ({ ...rs, locationName: '' })));
-    } else {
-        setTotalScore(0);
-        setRound(1);
-        setRoundScores([]);
-    }
     setIsGameOver(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameMode]);
   
-  
-  useEffect(() => {
-    if (gameLocations.length > 0) {
-      if (savedProgress && savedProgress.round === round) {
-          startNewRound(savedProgress.startTime);
-      } else if (!savedProgress || savedProgress.round !== round) {
-          startNewRound();
-      }
+    if (savedProgress) {
+      setRound(savedProgress.round);
+      setTotalScore(savedProgress.totalScore);
+      const scores = savedProgress.roundScores.map((rs, index) => ({
+        ...rs,
+        locationName: selectedLocations[index]?.name || '',
+      }));
+      setRoundScores(scores);
+      startNewRound(savedProgress.round, selectedLocations, savedProgress.elapsedTime);
+    } else {
+      setRound(1);
+      setTotalScore(0);
+      setRoundScores([]);
+      startNewRound(1, selectedLocations, 0);
     }
-  // This should only run when the round number changes or when the game locations are set.
-  // We remove savedProgress from dependencies to avoid re-running this on every render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameLocations, round]);
+  }, [gameMode, savedProgress, startNewRound]);
+  
+  // Advance to next round
+  useEffect(() => {
+    if (round > 1 && gameLocations.length > 0 && round <= gameLocations.length) {
+        // Check if we are not in an initial load from saved progress
+        const isInitialSavedLoad = savedProgress && round === savedProgress.round;
+        if (!isInitialSavedLoad) {
+            startNewRound(round, gameLocations);
+        }
+    }
+  }, [round, gameLocations, startNewRound, savedProgress]);
 
 
   useEffect(() => {
@@ -312,21 +308,50 @@ export function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps)
     };
   }, [isImageZoomed]);
   
+  // Master Timer Controller
   useEffect(() => {
+    let timer: number | null = null;
     if (gameState === 'guessing' && startTime > 0) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      const id = window.setInterval(() => {
-        setElapsedTime(Date.now() - startTime);
+      timer = window.setInterval(() => {
+        const timeSinceStart = Date.now() - startTime;
+        setElapsedTime(savedElapsedTimeRef.current + timeSinceStart);
       }, 100);
-      timerRef.current = id;
-    } else if (gameState === 'revealed' && timerRef.current) {
-      clearInterval(timerRef.current);
     }
 
+    // Cleanup function to clear interval
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timer) {
+        clearInterval(timer);
+      }
     };
   }, [gameState, startTime]);
+
+
+  // Save progress on tab/browser close for daily challenge
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+        if (gameMode === 'daily' && gameState === 'guessing' && !isGameOver) {
+            const finalElapsedTime = elapsedTime;
+
+            const currentProgress = {
+                date: getTodayDateString(),
+                data: {
+                    round: round,
+                    totalScore: totalScore,
+                    roundScores: roundScores.map(({ score, time }) => ({ score, time })),
+                    elapsedTime: finalElapsedTime,
+                }
+            };
+            localStorage.setItem('nusguessr_daily_progress', JSON.stringify(currentProgress));
+        }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [gameMode, gameState, isGameOver, round, totalScore, roundScores, elapsedTime]);
   
   useEffect(() => {
     if (currentLocation?.imageUrl) {
@@ -334,8 +359,6 @@ export function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps)
       
       const fetchAndEncode = async () => {
         try {
-          // We no longer need to fetch and encode, next/image handles this.
-          // Directly set the image URL.
           if (!isCancelled) {
             setObfuscatedImageUrl(currentLocation.imageUrl);
           }
@@ -364,8 +387,9 @@ export function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps)
   const handleGuess = () => {
     if (!guess || !currentLocation) return;
     
-    const finalElapsedTime = Date.now() - startTime;
-    setElapsedTime(finalElapsedTime);
+    setGameState("revealed");
+
+    const finalElapsedTime = elapsedTime;
 
     const dist = calculateDistance(
       guess.lat,
@@ -381,24 +405,22 @@ export function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps)
     setScore(newScore);
     setTotalScore(newTotalScore);
     setRoundScores(newRoundScores);
-    setGameState("revealed");
     setShowImageInResults(false);
 
     if (gameMode === 'daily') {
         const isGameFinished = round >= totalRounds;
         if (!isGameFinished) {
-            // Save progress for the *next* round
             const nextRoundProgress = {
                 date: getTodayDateString(),
                 data: {
                     round: round + 1,
                     totalScore: newTotalScore,
                     roundScores: newRoundScores.map(({ score, time }) => ({ score, time })),
+                    elapsedTime: 0, // Reset elapsed time for next round
                 }
             };
             localStorage.setItem('nusguessr_daily_progress', JSON.stringify(nextRoundProgress));
         } else {
-            // Game is finished, so mark it as completed for the day
             localStorage.setItem('nusguessr_daily_last_played', getTodayDateString());
             localStorage.removeItem('nusguessr_daily_progress');
         }
@@ -799,4 +821,4 @@ export function GameLayout({ gameMode, onExit, savedProgress }: GameLayoutProps)
       </AlertDialog>
     </div>
   );
-}
+})
