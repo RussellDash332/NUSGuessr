@@ -311,7 +311,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
 
   const totalRounds = gameLocations.length;
   const isTimerRunning = startTime > 0;
-  
+
   useImperativeHandle(ref, () => ({
     getCurrentState: () => ({
         round,
@@ -337,7 +337,6 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     setIsImageZoomed(false);
     setImageError(false);
     setIsImageReady(false);
-    // isMapReady does not need to be reset as the map is always ready after initial load
     
     savedElapsedTimeRef.current = restoredElapsedTime;
     setElapsedTime(restoredElapsedTime);
@@ -409,6 +408,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   }, [isTimerRunning, startTime]);
 
   useEffect(() => {
+    // Start timer only when image is ready and map has been initialized
     if (isImageReady && isMapReady && gameState === 'guessing' && startTime === 0) {
       setStartTime(Date.now());
     }

@@ -31,7 +31,7 @@ type MapWrapperProps = {
   zoom?: number;
   guessPosition: LatLng | null;
   actualPosition: LatLng | null;
-  onMapClick: (e: LeafletMouseEvent) => void;
+  onMapClick: (e: { latlng: LatLng }) => void;
   onMapReady: () => void;
   isRevealed: boolean;
   isInteractive?: boolean;
@@ -58,15 +58,18 @@ export function MapWrapper({
   useEffect(() => {
     if (mapContainerRef.current && !mapRef.current) {
       // Initialize map
-      mapRef.current = L.map(mapContainerRef.current, {
+      const map = L.map(mapContainerRef.current, {
         center: center,
         zoom: zoom,
-        doubleClickZoom: false
+        scrollWheelZoom: true,
+        wheelDebounceTime: 40,
+        wheelPxPerZoomLevel: 120,
       });
-
+      mapRef.current = map;
+      
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(mapRef.current);
+      }).addTo(map);
       
       onMapReady();
     }
@@ -82,7 +85,7 @@ export function MapWrapper({
       map.scrollWheelZoom.enable();
       map.boxZoom.enable();
       map.keyboard.enable();
-      if (map.tap) map.tap.enable();
+      map.doubleClickZoom.enable();
       if (mapContainerRef.current) {
         mapContainerRef.current.style.cursor = 'grab';
       }
@@ -92,7 +95,6 @@ export function MapWrapper({
       map.scrollWheelZoom.disable();
       map.boxZoom.disable();
       map.keyboard.disable();
-      if (map.tap) map.tap.disable();
       map.doubleClickZoom.disable();
       if (mapContainerRef.current) {
         mapContainerRef.current.style.cursor = 'default';
@@ -102,18 +104,47 @@ export function MapWrapper({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-  
-    // Map click listener
-    const handleClick = (e: LeafletMouseEvent) => {
-      onMapClick(e);
+    const container = mapContainerRef.current;
+    if (!map || !container) return;
+
+    const handleMapInteraction = (point: {x: number, y: number}) => {
+        if (!isInteractive || isRevealed || !mapRef.current) return;
+        
+        const container = mapRef.current.getContainer();
+        const rect = container.getBoundingClientRect();
+        
+        // Calculate coordinates relative to the map container
+        const x = point.x - rect.left;
+        const y = point.y - rect.top;
+        
+        const latlng = mapRef.current.containerPointToLatLng(L.point(x, y));
+        onMapClick({ latlng });
     };
-    map.on('click', handleClick);
-  
+
+    const handleTouchStart = (e: TouchEvent) => {
+        // Prevent default to stop page scroll/jump on mobile
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            handleMapInteraction({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+        }
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+        // Prevent default to stop text selection, etc.
+        e.preventDefault();
+        handleMapInteraction({ x: e.clientX, y: e.clientY });
+    }
+    
+    // Attach listeners for both touch and mouse
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('mousedown', handleMouseDown, { passive: false });
+    
+    // Cleanup: remove old leaflet click listener and our new listeners
     return () => {
-      map.off('click', handleClick);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('mousedown', handleMouseDown);
     };
-  }, [onMapClick]);
+  }, [onMapClick, isInteractive, isRevealed]);
 
   useEffect(() => {
     const map = mapRef.current;
