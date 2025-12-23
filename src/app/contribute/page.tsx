@@ -358,3 +358,4 @@ export default function ContributePage() {
       </footer>
     </div>
   );
+}
