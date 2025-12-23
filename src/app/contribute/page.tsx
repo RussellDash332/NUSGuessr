@@ -68,17 +68,53 @@ export default function ContributePage() {
         return;
       }
       form.setValue("imageFile", file, { shouldValidate: true });
+
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setImagePreview(base64String);
-        form.setValue("imageBase64", base64String, { shouldValidate: true });
+      reader.onload = (e) => {
+        const img = document.createElement("img");
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 1920;
+          const MAX_HEIGHT = 1080;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Get the data-URL formatted string
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.75); // 75% quality
+          setImagePreview(dataUrl);
+          form.setValue("imageBase64", dataUrl, { shouldValidate: true });
+        };
+        img.onerror = () => {
+            toast({
+              variant: "destructive",
+              title: "Image Load Error",
+              description: "Could not process the selected image file.",
+            });
+            form.setValue("imageBase64", "", { shouldValidate: true });
+        };
+        img.src = e.target?.result as string;
       };
       reader.onerror = () => {
         toast({
           variant: "destructive",
           title: "Image Read Error",
-          description: "Could not process the selected image file.",
+          description: "Could not read the selected image file.",
         });
         form.setValue("imageBase64", "", { shouldValidate: true });
       }
