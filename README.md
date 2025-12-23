@@ -38,10 +38,16 @@ To complete the setup, follow these steps:
 2.  **Create a Repository Secret**:
     - Go to your repository's settings on GitHub.
     - In the sidebar, navigate to "Secrets and variables" > "Actions".
-    - Click the "New repository secret" button.
-    - For the "Name", enter `GAME_DATA_JSON`.
-    - For the "Value", copy and paste the entire content of your local `src/lib/game-data.json` file.
-    - Click "Add secret".
+    - To add the game data, do the following.
+        - Click the "New repository secret" button.
+        - For the "Name", enter `GAME_DATA_JSON`.
+        - For the "Value", copy and paste the entire content of your local `src/lib/game-data.json` file.
+        - Click "Add secret".
+    - To add the Formspree URL, do the following.
+        - Click the "New repository secret" button.
+        - For the "Name", enter `NEXT_PUBLIC_FORMSPREE_URL`.
+        - For the "Value", copy and paste your Formspree ID (see `YOUR_FORM_ID` in `.env.local.example`).
+        - Click "Add secret".
 
 3.  **Configure GitHub Pages**:
     - Go to your repository's settings on GitHub.

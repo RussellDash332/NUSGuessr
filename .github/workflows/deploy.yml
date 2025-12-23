@@ -39,6 +39,11 @@ jobs:
           cat <<'EOF' > src/lib/game-data.json
           ${{ secrets.GAME_DATA_JSON }}
           EOF
+      - name: Create env file for Formspree
+        run: |
+          cat <<'EOF' > .env.local
+          NEXT_PUBLIC_FORMSPREE_URL="${{ secrets.NEXT_PUBLIC_FORMSPREE_URL }}"
+          EOF
       - name: Install dependencies
         run: npm install
       - name: Build with Next.js
