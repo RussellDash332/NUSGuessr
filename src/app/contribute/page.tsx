@@ -152,9 +152,9 @@ export default function ContributePage() {
         <div className="flex flex-col min-h-screen bg-background">
             <header className="p-4 border-b shrink-0 bg-background/95 backdrop-blur-sm z-10 sticky top-0">
                 <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
-                    <Link href="/" className="flex items-center gap-4 group">
-                        <NUSLogo className="h-10 w-10" />
-                        <h1 className="text-3xl font-bold font-headline tracking-tight">
+                    <Link href="/" className="flex items-center gap-2 md:gap-4 group">
+                        <NUSLogo className="h-8 w-8 md:h-10 md:w-10" />
+                        <h1 className="text-2xl md:text-3xl font-bold font-headline tracking-tight">
                             <span className="bg-gradient-to-r from-blue-500 to-orange-500 text-transparent bg-clip-text bg-[length:200%_auto] animate-gradient group-hover:underline">
                                 NUSGuessr
                             </span>
@@ -206,9 +206,9 @@ export default function ContributePage() {
     <div className="flex flex-col min-h-screen bg-background">
       <header className="p-4 border-b shrink-0 bg-background/95 backdrop-blur-sm z-10 sticky top-0">
          <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
-            <Link href="/" className="flex items-center gap-4 group">
-                <NUSLogo className="h-10 w-10" />
-                <h1 className="text-3xl font-bold font-headline tracking-tight">
+            <Link href="/" className="flex items-center gap-2 md:gap-4 group">
+                <NUSLogo className="h-8 w-8 md:h-10 md:w-10" />
+                <h1 className="text-2xl md:text-3xl font-bold font-headline tracking-tight">
                     <span className="bg-gradient-to-r from-blue-500 to-orange-500 text-transparent bg-clip-text bg-[length:200%_auto] animate-gradient group-hover:underline">
                         NUSGuessr
                     </span>
@@ -328,13 +328,7 @@ export default function ContributePage() {
                   </FormItem>
                 )}
               />
-                <div className="flex justify-center gap-4">
-                     <Link href="/">
-                        <Button variant="outline" type="button">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Game
-                        </Button>
-                    </Link>
+                <div className="flex justify-center">
                     <Button type="submit" size="lg" className="w-full max-w-xs" disabled={isSubmitting || !form.formState.isValid}>
                         {isSubmitting ? (
                             <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Submitting...</>
@@ -364,4 +358,3 @@ export default function ContributePage() {
       </footer>
     </div>
   );
-}

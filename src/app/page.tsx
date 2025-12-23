@@ -46,10 +46,10 @@ const HeaderContent = memo(function HeaderContent({ gameMode, onReturnToLanding 
     <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
       <button
         onClick={onReturnToLanding}
-        className={cn("flex items-center gap-4 group")}
+        className={cn("flex items-center gap-2 md:gap-4 group")}
         >
-        <NUSLogo className="h-10 w-10" />
-        <h1 className="text-3xl font-bold font-headline tracking-tight">
+        <NUSLogo className="h-8 w-8 md:h-10 md:w-10" />
+        <h1 className="text-2xl md:text-3xl font-bold font-headline tracking-tight">
           <span className={cn(
             "bg-gradient-to-r from-blue-500 to-orange-500 text-transparent bg-clip-text",
             "bg-[length:200%_auto] animate-gradient",
