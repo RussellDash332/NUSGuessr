@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import Image from "next/image";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 const MapWrapper = dynamic(() => import('@/components/map-wrapper').then(mod => mod.MapWrapper), {
   ssr: false,
@@ -35,7 +36,7 @@ const submissionSchema = z.object({
 
 type SubmissionFormValues = z.infer<typeof submissionSchema>;
 
-export default function SubmitPage() {
+export default function ContributePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
@@ -87,25 +88,37 @@ export default function SubmitPage() {
 
   const onSubmit = async (data: SubmissionFormValues) => {
     setIsSubmitting(true);
+    const formspreeUrl = process.env.NEXT_PUBLIC_FORMSPREE_URL;
+
+    if (!formspreeUrl) {
+        toast({
+            variant: "destructive",
+            title: "Configuration Error",
+            description: "The submission form is not configured. Please contact the site administrator.",
+        });
+        setIsSubmitting(false);
+        return;
+    }
 
     const submissionData = {
-      message: `New NUSGuessr submission: ${data.locationName}`,
-      jsonData: JSON.stringify({
-        id: `new_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        name: data.locationName,
-        coordinates: {
-            lat: data.coordinates.lat,
-            lng: data.coordinates.lng,
-        },
-        imageUrl: data.imageBase64,
-      }, null, 2),
+        message: `New NUSGuessr submission: ${data.locationName}`,
+        jsonData: JSON.stringify({
+            id: `new_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            name: data.locationName,
+            coordinates: {
+                lat: data.coordinates.lat,
+                lng: data.coordinates.lng,
+            },
+            imageUrl: data.imageBase64,
+        }, null, 2),
     };
 
     try {
-      const response = await fetch('/api/submit', {
+      const response = await fetch(formspreeUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify(submissionData),
       });
@@ -141,7 +154,17 @@ export default function SubmitPage() {
                 <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
                     <Link href="/" className="flex items-center gap-4 group">
                         <NUSLogo className="h-10 w-10" />
-                        <h1 className="text-3xl font-bold font-headline tracking-tight">NUSGuessr</h1>
+                        <h1 className="text-3xl font-bold font-headline tracking-tight">
+                            <span className="bg-gradient-to-r from-blue-500 to-orange-500 text-transparent bg-clip-text bg-[length:200%_auto] animate-gradient group-hover:underline">
+                                NUSGuessr
+                            </span>
+                        </h1>
+                    </Link>
+                    <Link href="/">
+                        <Button variant="outline">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Game
+                        </Button>
                     </Link>
                 </div>
             </header>
@@ -162,6 +185,19 @@ export default function SubmitPage() {
                     </CardContent>
                 </Card>
             </main>
+             <footer className="text-center p-4 border-t text-sm text-muted-foreground shrink-0 bg-background z-10 sticky bottom-0">
+                <p>Thank you for helping to make NUSGuessr better!</p>
+                <p className="text-xs mt-1">
+                <a
+                    href="https://russelldash332.github.io/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                >
+                    RussellDash332
+                </a> © 2025
+                </p>
+            </footer>
         </div>
     );
   }
@@ -172,7 +208,11 @@ export default function SubmitPage() {
          <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
             <Link href="/" className="flex items-center gap-4 group">
                 <NUSLogo className="h-10 w-10" />
-                <h1 className="text-3xl font-bold font-headline tracking-tight">NUSGuessr</h1>
+                <h1 className="text-3xl font-bold font-headline tracking-tight">
+                    <span className="bg-gradient-to-r from-blue-500 to-orange-500 text-transparent bg-clip-text bg-[length:200%_auto] animate-gradient group-hover:underline">
+                        NUSGuessr
+                    </span>
+                </h1>
             </Link>
             <Link href="/">
                 <Button variant="outline">
@@ -288,14 +328,22 @@ export default function SubmitPage() {
                   </FormItem>
                 )}
               />
+                <div className="flex justify-center gap-4">
+                     <Link href="/">
+                        <Button variant="outline" type="button">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Game
+                        </Button>
+                    </Link>
+                    <Button type="submit" size="lg" className="w-full max-w-xs" disabled={isSubmitting || !form.formState.isValid}>
+                        {isSubmitting ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Submitting...</>
+                        ) : (
+                            "Submit Location for Review"
+                        )}
+                    </Button>
+                </div>
 
-              <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || !form.formState.isValid}>
-                {isSubmitting ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Submitting...</>
-                ) : (
-                    "Submit Location for Review"
-                )}
-              </Button>
             </form>
           </Form>
         </div>
@@ -303,6 +351,16 @@ export default function SubmitPage() {
 
       <footer className="text-center p-4 border-t text-sm text-muted-foreground shrink-0 bg-background z-10 sticky bottom-0">
         <p>Thank you for helping to make NUSGuessr better!</p>
+        <p className="text-xs mt-1">
+          <a
+            href="https://russelldash332.github.io/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            RussellDash332
+          </a> © 2025
+        </p>
       </footer>
     </div>
   );

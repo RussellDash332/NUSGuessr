@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, BrainCircuit, Play, ClipboardCopy, PlusSquare } from "lucide-react";
+import { Calendar, BrainCircuit, Play, ClipboardCopy, PlusSquare, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { RoundScore, SavedProgress, FinalResults } from "@/components/game-layout";
@@ -59,6 +59,14 @@ const HeaderContent = memo(function HeaderContent({ gameMode, onReturnToLanding 
           </span>
         </h1>
       </button>
+      {gameMode === null && (
+        <Link href="/contribute">
+          <Button variant="outline">
+              <PlusSquare className="mr-2 h-4 w-4"/>
+              Contribute
+          </Button>
+        </Link>
+      )}
     </div>
   );
 });
@@ -274,6 +282,7 @@ export default function Home() {
               <h2 className="text-4xl font-bold font-headline tracking-tight mb-2">Welcome to NUSGuessr!</h2>
               <p className="text-lg text-muted-foreground">Choose a game mode to start playing.</p>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
               <Card className="hover:shadow-lg transition-shadow">
                 <CardHeader>
@@ -327,14 +336,6 @@ export default function Home() {
                   </Button>
                 </CardContent>
               </Card>
-            </div>
-            <div className="mt-8">
-                <Link href="/submit">
-                    <Button variant="outline">
-                        <PlusSquare className="mr-2 h-4 w-4"/>
-                        Contribute a Location
-                    </Button>
-                </Link>
             </div>
           </div>
         ) : (
