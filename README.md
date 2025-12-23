@@ -46,7 +46,7 @@ To complete the setup, follow these steps:
     - To add the Formspree URL, do the following.
         - Click the "New repository secret" button.
         - For the "Name", enter `NEXT_PUBLIC_FORMSPREE_URL`.
-        - For the "Value", copy and paste your Formspree ID (see `YOUR_FORM_ID` in `.env.local.example`).
+        - For the "Value", copy and paste your Formspree URL `https://formspree.io/f/YOUR_FORM_ID` without the double quotes, where `YOUR_FORM_ID` is your actual form ID from Formspree.
         - Click "Add secret".
 
 3.  **Configure GitHub Pages**:
