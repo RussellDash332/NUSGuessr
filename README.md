@@ -3,7 +3,7 @@ Letting Firebase Studio cook something simple?
 
 ## Getting Started
 
-To get started, take a look at `src/app/page.tsx`.
+To get started, take a look at [the blueprint](docs/blueprint.md).
 
 ## Running Locally
 
@@ -14,6 +14,9 @@ To run this application on your local machine, follow these steps:
     ```bash
     npm install
     ```
+
+2. **Setup Secrets and Environments**
+    Ensure the file `src/lib/game-data.json` and `.env.local` exists with the content structure similar to the one at [`src/lib/game-data.json.example`](/src/lib/game-data.json.example) and [`.env.local.example`](/.env.local.example). Don't forget to change `YOUR_FORM_ID` accordingly.
 
 2.  **Start the Development Server:**
     After the installation is complete, run this command to start the app.
@@ -44,5 +47,4 @@ To complete the setup, follow these steps:
     - Go to your repository's settings on GitHub.
     - Navigate to the "Pages" section in the sidebar.
     - Under "Build and deployment", select **GitHub Actions** as the "Source".
-
-After your first push to the `main` branch, the workflow will run and deploy your site. You'll find the public URL in the "Pages" settings.
+    - After your first push to the `main` branch, the workflow will run and deploy your site. You'll find the public URL in the "Pages" settings.

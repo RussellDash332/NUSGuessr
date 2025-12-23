@@ -252,7 +252,7 @@ const generateGameLocations = (mode: GameMode, allLocs: Location[]): Location[] 
         result.push(allLocs[Math.floor(randomFn() * allLocs.length)]);
       }
     }
-  
+
     return result.slice(0, count);
 };
 
@@ -294,7 +294,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   const [imageError, setImageError] = useState(false);
   const [isImageReady, setIsImageReady] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
-  
+
   const [zoomLevel, setZoomLevel] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
@@ -328,7 +328,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       }
       return;
     }
-    
+
     setGuess(null);
     setGameState("guessing");
     setDistance(0);
@@ -337,11 +337,11 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     setIsImageZoomed(false);
     setImageError(false);
     setIsImageReady(false);
-    
+
     savedElapsedTimeRef.current = restoredElapsedTime;
     setElapsedTime(restoredElapsedTime);
     setStartTime(0);
-    
+
     const nextLocation = locations[roundNum - 1];
     setCurrentLocation(nextLocation);
     setObfuscatedImageUrl(nextLocation.imageUrl);
@@ -360,7 +360,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     const selectedLocations = generateGameLocations(gameMode, allLocations);
     setGameLocations(selectedLocations);
     setIsGameOver(false);
-  
+
     if (savedProgress) {
       setRound(savedProgress.round);
       setTotalScore(savedProgress.totalScore);
@@ -390,7 +390,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       document.body.classList.remove('overflow-hidden');
     };
   }, [isImageZoomed]);
-  
+
   // Master Timer Controller
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
@@ -449,7 +449,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
 
   const handleGuess = () => {
     if (!guess || !currentLocation) return;
-    
+
     setGameState("revealed");
 
     const finalElapsedTime = elapsedTime;
@@ -506,7 +506,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     const dateString = formatDate(today);
     const modeTitle = gameMode === 'daily' ? `NUSGuessr Daily - ${dateString}` : `NUSGuessr Practice`;
     const title = `${modeTitle} - Final Score: ${totalScore.toLocaleString()}`;
-    
+
     const summary = finalRoundScoresForDisplay.map(
       (r, index) => {
         if (gameMode === 'daily') {
@@ -517,7 +517,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
     ).join('\n');
 
     const url = 'https://russelldash332.github.io/NUSGuessr';
-    
+
     const textToCopy = `${title}\n\n${summary}\n\nPlay here: ${url}`;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
@@ -552,7 +552,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       return Math.max(1, newZoom);
     });
   };
-  
+
   const clampPan = useCallback((x: number, y: number, currentZoom: number) => {
     if (!imageRef.current || !zoomContainerRef.current) return { x, y };
 
@@ -578,21 +578,21 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       }
     }
   };
-  
+
   const handlePanMove = (clientX: number, clientY: number) => {
     if (isPanning.current) {
       const dx = clientX - lastPanPosition.current.x;
       const dy = clientY - lastPanPosition.current.y;
-      
+
       setPan(prev => {
         const newPan = { x: prev.x + dx, y: prev.y + dy };
         return clampPan(newPan.x, newPan.y, zoomLevel);
       });
-  
+
       lastPanPosition.current = { x: clientX, y: clientY };
     }
   };
-  
+
   const handlePanEnd = () => {
     if (isPanning.current) {
         isPanning.current = false;
@@ -614,7 +614,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
   const handleImageLoad = useCallback(() => {
     setIsImageReady(true);
   }, []);
-  
+
   const handleMapReady = useCallback(() => {
     setIsMapReady(true);
   }, []);
@@ -633,8 +633,8 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
         <div className="flex justify-between items-center text-lg">
           <span>Distance:</span>
           <span className="font-bold">
-            {distance < 1 
-              ? `${(distance * 1000).toFixed(0)} m` 
+            {distance < 1
+              ? `${(distance * 1000).toFixed(0)} m`
               : `${distance.toFixed(2)} km`}
           </span>
         </div>
@@ -656,7 +656,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       </CardFooter>
     </Card>
   );
-  
+
   if (!currentLocation || !obfuscatedImageUrl) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -664,7 +664,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
       </div>
     );
   }
-  
+
   const mapCenter: LatLngExpression = [1.2991, 103.7764]; // Center of NUS
   const actualPosition: LatLng | null = currentLocation ? { lat: currentLocation.coordinates.lat, lng: currentLocation.coordinates.lng } : null;
 
@@ -706,7 +706,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
             </GuessImage>
           ) : (
             showImageInResults ? (
-              <ImageCard 
+              <ImageCard
                 obfuscatedImageUrl={obfuscatedImageUrl}
                 openZoomView={openZoomView}
                 setShowImageInResults={setShowImageInResults}
@@ -748,7 +748,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
           )}
         </div>
       </div>
-      
+
       {isImageZoomed && (
         <div
           className="absolute inset-0 z-[1001] bg-black/80 flex flex-col items-center justify-center overflow-hidden"
@@ -790,7 +790,7 @@ export const GameLayout = forwardRef(function GameLayout({ gameMode, onExit, sav
               )}
             </div>
           </div>
-          
+
           <Button
             variant="ghost"
             size="icon"

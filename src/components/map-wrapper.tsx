@@ -66,19 +66,19 @@ export function MapWrapper({
         wheelPxPerZoomLevel: 120,
       });
       mapRef.current = map;
-      
+
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
-      
+
       onMapReady();
     }
   }, [center, zoom, onMapReady]);
-  
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-  
+
     if (isInteractive) {
       map.dragging.enable();
       map.touchZoom.enable();
@@ -109,14 +109,14 @@ export function MapWrapper({
 
     const handleMapInteraction = (point: {x: number, y: number}) => {
         if (!isInteractive || isRevealed || !mapRef.current) return;
-        
+
         const container = mapRef.current.getContainer();
         const rect = container.getBoundingClientRect();
-        
+
         // Calculate coordinates relative to the map container
         const x = point.x - rect.left;
         const y = point.y - rect.top;
-        
+
         const latlng = mapRef.current.containerPointToLatLng(L.point(x, y));
         onMapClick({ latlng });
     };
@@ -134,11 +134,11 @@ export function MapWrapper({
         e.preventDefault();
         handleMapInteraction({ x: e.clientX, y: e.clientY });
     }
-    
+
     // Attach listeners for both touch and mouse
     container.addEventListener('touchstart', handleTouchStart, { passive: false });
     container.addEventListener('mousedown', handleMouseDown, { passive: false });
-    
+
     // Cleanup: remove old leaflet click listener and our new listeners
     return () => {
       container.removeEventListener('touchstart', handleTouchStart);
@@ -155,7 +155,7 @@ export function MapWrapper({
     if (prevIsRevealedRef.current && !isRevealed) {
       map.setView(center, zoom);
     }
-  
+
     // Update the ref for the next render.
     prevIsRevealedRef.current = isRevealed;
   }, [isRevealed, center, zoom]);
@@ -182,7 +182,7 @@ export function MapWrapper({
       if (!actualMarkerRef.current) {
         actualMarkerRef.current = L.marker(actualPosition, { icon: actualIcon }).addTo(map);
       }
-      
+
       // Add polyline and fit bounds
       if (guessPosition && !polylineRef.current) {
         const latlngs = [guessPosition, actualPosition];
@@ -202,7 +202,7 @@ export function MapWrapper({
     }
 
   }, [guessPosition, actualPosition, isRevealed]);
-  
+
   return (
     <div
       ref={mapContainerRef}

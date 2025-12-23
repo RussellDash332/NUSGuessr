@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, memo, useRef } from "react";
+import Link from 'next/link';
 import { GameLayout } from "@/components/game-layout";
 import { NUSLogo } from "@/components/nus-logo";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, BrainCircuit, Play, ClipboardCopy } from "lucide-react";
+import { Calendar, BrainCircuit, Play, ClipboardCopy, PlusSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { RoundScore, SavedProgress, FinalResults } from "@/components/game-layout";
@@ -43,8 +44,8 @@ const formatDate = (date: Date): string => {
 const HeaderContent = memo(function HeaderContent({ gameMode, onReturnToLanding }: { gameMode: GameMode | null, onReturnToLanding: () => void}) {
   return (
     <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
-      <button 
-        onClick={onReturnToLanding} 
+      <button
+        onClick={onReturnToLanding}
         className={cn("flex items-center gap-4 group")}
         >
         <NUSLogo className="h-10 w-10" />
@@ -79,12 +80,12 @@ export default function Home() {
   const checkDailyStatus = () => {
     const today = getTodayDateString();
     const lastPlayed = localStorage.getItem('nusguessr_daily_last_played');
-    
+
     if (lastPlayed === today) {
       setDailyChallengeCompleted(true);
       setDailyProgress(null);
       localStorage.removeItem('nusguessr_daily_progress');
-      
+
       const resultsRaw = localStorage.getItem('nusguessr_daily_results');
       if (resultsRaw) {
         try {
@@ -192,7 +193,7 @@ export default function Home() {
     }
     setGameMode(null);
   };
-  
+
   const returnToLanding = () => {
     if (gameMode) {
         setIsConfirmingExit(true);
@@ -234,13 +235,13 @@ export default function Home() {
     const correctedDate = new Date(dateObj.getTime() + dateObj.getTimezoneOffset() * 60000);
     const dateString = formatDate(correctedDate);
     const title = `NUSGuessr Daily - ${dateString} - Final Score: ${totalScore.toLocaleString()}`;
-    
+
     const summary = roundScores.map(
       (r, index) => `Round ${index + 1}: ${r.score.toLocaleString()} pts (${(r.time / 1000).toFixed(1)}s)`
     ).join('\n');
 
     const url = 'https://russelldash332.github.io/NUSGuessr';
-    
+
     const textToCopy = `${title}\n\n${summary}\n\nPlay here: ${url}`;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
@@ -262,13 +263,13 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen w-full bg-background">
-      <header className="p-4 border-b shrink-0 bg-background/95 backdrop-blur-sm z-10">
+      <header className="p-4 border-b shrink-0 bg-background/95 backdrop-blur-sm z-10 sticky top-0">
         <HeaderContent gameMode={gameMode} onReturnToLanding={returnToLanding} />
       </header>
 
       <main className="flex-grow relative overflow-y-auto">
         {!gameMode ? (
-          <div className="flex flex-col items-center justify-center h-full p-4">
+          <div className="flex flex-col items-center justify-center min-h-full p-4">
             <div className="text-center mb-8">
               <h2 className="text-4xl font-bold font-headline tracking-tight mb-2">Welcome to NUSGuessr!</h2>
               <p className="text-lg text-muted-foreground">Choose a game mode to start playing.</p>
@@ -327,18 +328,26 @@ export default function Home() {
                 </CardContent>
               </Card>
             </div>
+            <div className="mt-8">
+                <Link href="/submit">
+                    <Button variant="outline">
+                        <PlusSquare className="mr-2 h-4 w-4"/>
+                        Contribute a Location
+                    </Button>
+                </Link>
+            </div>
           </div>
         ) : (
-          <GameLayout 
+          <GameLayout
             ref={gameLayoutRef}
-            gameMode={gameMode} 
-            onExit={handleExitGame} 
+            gameMode={gameMode}
+            onExit={handleExitGame}
             savedProgress={gameMode === 'daily' ? dailyProgress : null}
           />
         )}
       </main>
 
-      <footer className="text-center p-4 border-t text-sm text-muted-foreground shrink-0 bg-background z-10">
+      <footer className="text-center p-4 border-t text-sm text-muted-foreground shrink-0 bg-background z-10 sticky bottom-0">
         <p>Challenge your knowledge of the National University of Singapore campus!</p>
         <p className="text-xs mt-1">
           <a
@@ -351,13 +360,13 @@ export default function Home() {
           </a> © 2025
         </p>
       </footer>
-      
+
       <AlertDialog open={isConfirming} onOpenChange={setIsConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{isResumingDaily ? "Resume game?" : "Are you ready?"}</AlertDialogTitle>
             <AlertDialogDescription>
-              {isResumingDaily 
+              {isResumingDaily
                 ? "You are about to continue the Daily Challenge."
                 : `You are about to start the ${pendingMode === 'daily' ? 'Daily Challenge' : 'Practice round'}.`
               }
