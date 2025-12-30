@@ -358,7 +358,7 @@ export default function Home() {
             className="hover:underline"
           >
             RussellDash332
-          </a> © 2025
+          </a> © 2026
         </p>
       </footer>
 
